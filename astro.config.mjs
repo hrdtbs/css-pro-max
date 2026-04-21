@@ -19,9 +19,9 @@ export default defineConfig({
 				{
 					label: '設計基盤',
 					items: [
-						{ label: 'Responsive', slug: 'references/responsive' },
 						{ label: 'Terminology', slug: 'references/terminology' },
 						{ label: 'Foundation', slug: 'references/foundation' },
+						{ label: 'Responsive', slug: 'references/responsive' },
 						{ label: 'Tokens', slug: 'references/tokens' },
 						{ label: 'Color', slug: 'references/color' },
 						{ label: 'Z-Index', slug: 'references/z-index' },
