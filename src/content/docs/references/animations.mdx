@@ -1,0 +1,191 @@
+---
+title: Animations
+description: 実務事故から逆算して、モーション設計を判断順序・実装規約・監査観点まで統合する上級者向けガイド。
+---
+
+
+この章の目的は、モーションを「演出」ではなく「状態理解のインフラ」として扱える実装者を増やすことです。  
+対象は実務経験者を前提とし、単発テクニックではなく、事故が起きる構造と再発防止の運用設計を扱います。
+
+## シナリオ
+
+あなたはダッシュボードUIの最終レビュー担当です。  
+コンポーネント自体は揃っているものの、運用環境では次の問題が繰り返し報告されています。
+
+- メニュー hover が過敏で、長時間操作時に集中が切れる
+- モーダル開閉が端末差で重く、入力のテンポを阻害する
+- キーボード操作時に focus とモーションが競合し、現在地を見失う
+- `prefers-reduced-motion` が一律停止で実装され、必要な状態変化まで消える
+
+この状態では、個別修正を続けるほど「どこまで動かしてよいか」の基準が散逸します。  
+必要なのは、`functional vs decorative` 分類を起点に、`duration/easing`、`focus`、`will-change`、`reduced-motion tier` を単一の判断フレームで管理することです。
+
+## なぜ起きるか
+
+モーション事故の根本原因は「責務の混線」です。  
+具体的には、次の4つが同時に起きると品質が崩れます。
+
+1. 目的不在  
+   視覚的に気持ちよい動きが先行し、機能要件（状態説明・フィードバック）との対応が消える
+2. 時間設計の未分離  
+   `duration` と `easing` をトークンとして管理せず、都度値で増殖する
+3. 入力モード非整合  
+   マウス前提の hover 体験をキーボード focus に持ち込み、知覚負荷が上がる
+4. 性能対策の恒久化  
+   `will-change` を常設し、GPUメモリ消費とレイヤー肥大を招く
+
+## 失敗コード
+
+次のコードは、レビューをすり抜けやすい典型的な失敗です。
+
+```css
+.toolbar-button {
+  transition: all 300ms ease;
+}
+
+.toolbar-button:hover,
+.toolbar-button:focus-visible {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow: 0 8px 20px rgb(0 0 0 / 0.16);
+}
+
+.drawer {
+  will-change: transform;
+  transition: all 420ms ease-in-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toolbar-button,
+  .drawer {
+    transition: none;
+    animation: none;
+  }
+}
+```
+
+問題点:
+
+- `transition-property: all` 相当で、意図しない property まで補間対象になる
+- `focus-visible` で移動系モーションを発火し、キーボード操作の視覚安定性を壊す
+- `will-change` 常設で、長時間利用時のリソース効率が悪化する
+- reduced-motion を `disable` 一択にし、機能的な状態遷移まで失う
+
+## 段階改善
+
+### Step 1: 目的で分割する（functional / decorative）
+
+- `functional`: 状態変化の因果説明に必要（開閉、追加、削除、フォーカス文脈補助）
+- `decorative`: なくても機能が成立（装飾的な揺れ、過剰な視線誘導）
+
+運用ルール:
+
+- 高頻度UIでは decorative を原則不採用
+- functional は「消したときに理解コストが上がるか」で判断
+
+### Step 2: 時間設計を固定する（duration / easing）
+
+- functional: `<= 300ms`
+- 大面積（drawer / modal / page-level transition）: `300ms - 500ms`
+- enter/exit は `ease-out` 系、文脈内移動は `ease-in-out` 系
+- property ごとに duration/easing を分離し、意味を明示する
+
+```css
+:root {
+  --motion-duration--xs: 120ms;
+  --motion-duration--sm: 180ms;
+  --motion-duration--md: 260ms;
+  --motion-duration--lg: 420ms;
+  --ease--out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease--in-out-quint: cubic-bezier(0.86, 0, 0.07, 1);
+}
+```
+
+### Step 3: 入力モードを分離する（focus時モーション配慮）
+
+- `:hover` と `:focus-visible` を同一ルールで束ねない
+- `focus-visible` では位置移動より輪郭・陰影の明示を優先
+- キーボード導線の連続移動で視点ジャンプを生む transform を避ける
+
+### Step 4: 性能制御を局所化する（will-change節度）
+
+- `will-change` は「発火直前に付与、完了後に解除」を原則にする
+- 常設を許可するのは、再計算コストが高く再生頻度も高い限定ケースのみ
+- DevToolsでレイヤー増加を確認し、常設可否を実測で判断する
+
+### Before / After 例（popover）
+
+Before:
+
+```css
+.popover {
+  transition: all 300ms ease;
+}
+
+.popover:focus-within {
+  transform: scale(1.02);
+}
+```
+
+After:
+
+```css
+.popover {
+  transform-origin: top center;
+  transition-property: opacity, transform, box-shadow;
+  transition-duration: var(--motion-duration--sm), var(--motion-duration--md), var(--motion-duration--sm);
+  transition-timing-function: var(--ease--out-quint), var(--ease--out-quint), ease;
+}
+
+.popover[data-state="closed"] {
+  opacity: 0;
+  transform: scale(0.96);
+}
+
+.popover:focus-within {
+  transform: none; /* focus時は位置移動させない */
+  box-shadow: 0 0 0 3px var(--color--focus-ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .popover {
+    transition-duration: 80ms; /* shorten tier */
+    transform: none; /* simplify tier */
+  }
+}
+```
+
+## 判断フロー
+
+実装前に、次の順序で分岐を固定します。
+
+1. この動きは functional か decorative か
+2. decorative なら削除しても目的を満たせるか
+3. functional なら `transition` で足りるか（不足時のみ `@keyframes` / WAAPI）
+4. propertyごとに `duration/easing` を分離できているか
+5. `transition-property: all` を排除できているか
+6. `focus-visible` で移動系モーションを抑制できているか
+7. `will-change` を短時間・局所に閉じ込められているか
+8. reduced-motion tier（`disable` / `simplify` / `shorten` / `keep`）を要素単位で選べているか
+
+## 規約サマリ
+
+- 目的のないモーションは禁止。すべて `functional` か `decorative` に分類する
+- `transition-property: all` は禁止。補間対象を明示する
+- functional は原則 `<= 300ms`、大面積は `<= 500ms`
+- `easing` を設計の主変数として扱い、トークン化する
+- `focus-visible` 中は位置移動より可視輪郭を優先する
+- `will-change` は常設しない。発火前後で付与/解除する
+- reduced-motion は一律停止しない。`disable` / `simplify` / `shorten` / `keep` の tier で運用する
+
+## 理解チェック
+
+1. `functional` と `decorative` の境界を、通知トーストとボタンhoverの2例で説明してください。  
+2. `transition-property: all` が設計負債になる理由を、保守性と性能の両面で述べてください。  
+3. `focus-visible` で transform を抑制すべき場面を、キーボード操作の連続性の観点から説明してください。  
+4. `will-change` を常設してよい条件を、測定観点を含めて定義してください。  
+5. reduced-motion tier の `disable / simplify / shorten / keep` を、モーダル開閉でどう割り当てるか提案してください。
+
+## 次章導線
+
+- モーションを再利用可能な命名規約で管理したい場合は [Keyframes](/references/keyframes/)
+- reduced-motion を出荷基準として監査可能にしたい場合は [Accessibility Baseline](/references/accessibility/)

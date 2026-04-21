@@ -1,0 +1,130 @@
+---
+title: Z-Index
+description: 重なり順の場当たり運用を止め、absolute/relative分離で破綻しないレイヤー設計へ移行する。
+---
+
+
+## シナリオ
+
+ヘッダー、モーダル、トースト、ローディングを追加するたびに `z-index: 9999` が増える。  
+一時的に直っても、次の変更でまた衝突する。  
+この章では、重なり順を「数値調整」ではなく「責務分離」で管理する手順を扱います。
+
+## まず結論: z-indexは2系統に分離する
+
+1. Absolute layering（ページ全体の重なり）
+2. Relative layering（コンポーネント内部の重なり）
+
+この2つを同じスケールで管理しないことが最優先です。
+
+## なぜ壊れるのか
+
+- グローバル重なりとローカル重なりを同じ整数で管理している
+- 「とりあえず前面」の数値加算がレビュー不能になる
+- stacking context を確認せず、数字だけ増やしている
+
+## 失敗コードを観察する
+
+```css
+.header {
+  position: sticky;
+  z-index: 100;
+}
+
+.modal {
+  position: fixed;
+  z-index: 9999;
+}
+
+.card__badge {
+  position: absolute;
+  z-index: 200;
+}
+```
+
+問題:
+
+- コンポーネント内部（`.card__badge`）まで absolute 値で汚染される
+- 数値の根拠が残らない
+- 次回変更時に「どれを上げるべきか」が判断できない
+
+## 段階的に改善する
+
+### Step 1: Absolute stackをトークン化する
+
+```css
+:root {
+  --z-base: 0;
+  --z-header: 10;
+  --z-drawer: 20;
+  --z-modal: 30;
+  --z-toast: 40;
+  --z-loading: 50;
+}
+
+.header { z-index: var(--z-header); }
+.modal { z-index: var(--z-modal); }
+```
+
+### Step 2: Relative layeringは `0/1` に限定する
+
+```css
+.card {
+  position: relative;
+}
+
+.card__image {
+  position: relative;
+  z-index: 0;
+}
+
+.card__badge {
+  position: absolute;
+  z-index: 1;
+}
+```
+
+### Step 3: 例外は明示的に隔離する
+
+```css
+.global-loading {
+  z-index: calc(infinity);
+}
+```
+
+`calc(infinity)` は全画面ブロッカーなど、最終手段だけに限定します。
+
+## stacking context の確認手順
+
+`z-index` 調整前に、次を必ず確認します。
+
+1. 要素は `position: static` ではないか
+2. 祖先に `transform` / `opacity < 1` / `filter` が入っていないか
+3. 同一 stacking context 上で比較しているか
+
+この確認なしに数値を上げるのは再発の原因になります。
+
+## `<dialog>` の扱い
+
+`<dialog>` を `showModal()` で開く場合は top layer に配置されます。  
+そのため通常の `z-index` 管理対象として扱いません。
+
+## 規約サマリ（この章で持ち帰るルール）
+
+- absolute と relative の `z-index` を分離する
+- absolute はグローバルトークンで管理し、10刻みで運用する
+- relative は原則 `0/1` で閉じる
+- 数字を上げる前に stacking context を確認する
+- 例外（`calc(infinity)`）は用途を限定して明記する
+
+## 理解チェック
+
+1. なぜ `.card__badge` に `z-index: 200` を付けると将来衝突しやすくなるか。  
+2. absolute stack をトークン化すると、レビューで何が説明可能になるか。  
+3. `z-index` を上げても効かないとき、最初に疑うべき要因は何か。  
+
+## 次に読む章
+
+- ベースCSSの優先順位設計へ接続: [Foundation](/references/foundation/)
+- 命名責務と構造語彙を揃える: [Terminology](/references/terminology/)
+- アクセシビリティ要件と重なりを接続する: [Accessibility](/references/accessibility/)

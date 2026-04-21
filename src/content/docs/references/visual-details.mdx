@@ -1,0 +1,230 @@
+---
+title: Visual Details
+description: 仕上がり品質を決める視覚ディテール原則と実装チェック。
+---
+
+
+仕上がり品質は「大きな機能」ではなく、微細な規律の一貫性で決まります。  
+この章では visual polish を属人的な感覚ではなく、レビュー可能な手順へ変換します。
+
+## シナリオ
+
+機能要件は満たしているのに、UIが「硬い」「安っぽい」「疲れる」と評価される。  
+原因は単一ではなく、角丸・影・モーション・数字組版・初回描画のノイズが同時に崩れていることが多い。  
+この章の目的は、これらを独立した原則として分解し、再現可能な改善順で適用することです。
+
+## まず結論: polishの保持規約
+
+1. 同心円角丸: `outer-radius = inner-radius + padding`
+2. 光学補正: 数学的中央ではなく視覚的中央へ数px寄せる
+3. 多層影: top / contact / ambient を分離する
+4. stagger: 入場順は段差を作るが合計遅延は `<= 300ms`
+5. exit対称: enterに対して逆方向・短尺で閉じる
+6. icon cross-fade: 意味変更時は opacity + scale + blur を併用
+7. tabular nums: ライブ数値は `font-variant-numeric: tabular-nums`
+8. 初回描画抑制: first paintで不要アニメーションを再生しない
+
+## なぜ崩れるのか
+
+- 角丸は token 値をそのまま再利用し、内外の幾何関係が壊れる
+- 影は単層で済ませ、接地感と浮遊感を同じ成分に混ぜてしまう
+- enterだけ設計し、exitを未定義のまま `display: none` へ落とす
+- 数字幅が可変で、ライブ更新時に桁ぶれが発生する
+- hydration直後にすべての transition が走り、初回描画ノイズになる
+
+## 失敗コードを観察する
+
+```css
+.chip {
+  border-radius: 12px;
+}
+
+.chip__icon[data-state="checked"] {
+  opacity: 1;
+}
+
+.metric {
+  font-variant-numeric: normal;
+}
+
+.menu-item {
+  transition: all 240ms ease;
+}
+```
+
+問題:
+- 同心円角丸の関係式がなく、内側要素が角で干渉する
+- icon状態変化が瞬間切替で意味差分を追いにくい
+- `tabular nums` 不在で更新時にレイアウトが振れる
+- `transition: all` により初回描画や非対象プロパティまで遷移する
+
+## 段階的に改善する
+
+### Step 1: 幾何と光学を先に揃える
+
+```css
+.card {
+  --r-outer: 16px;
+  --pad: 4px;
+  border-radius: var(--r-outer);
+  padding: var(--pad);
+}
+
+.card__media {
+  border-radius: calc(var(--r-outer) - var(--pad)); /* 同心円角丸 */
+  transform: translateY(-1px); /* 光学補正: 視覚的中心へ寄せる */
+}
+```
+
+### Step 2: 多層影を役割で分離する
+
+```css
+.surface {
+  box-shadow:
+    0 1px 2px rgb(0 0 0 / 0.05),   /* top */
+    0 6px 14px rgb(0 0 0 / 0.10),  /* contact */
+    0 18px 36px rgb(0 0 0 / 0.12); /* ambient */
+}
+
+@media (prefers-color-scheme: dark) {
+  .surface {
+    box-shadow:
+      0 1px 1px rgb(0 0 0 / 0.35),
+      0 8px 20px rgb(0 0 0 / 0.45),
+      inset 0 1px 0 rgb(255 255 255 / 0.05);
+  }
+}
+```
+
+### Step 3: staggerとexit対称をセットで設計する
+
+```css
+.menu-item {
+  --step: 60ms;
+  animation: menu-enter 220ms var(--ease--out-quint) both;
+  animation-delay: calc(var(--index) * var(--step)); /* stagger */
+}
+
+.menu[data-state="closing"] .menu-item {
+  animation: menu-exit 150ms var(--ease--in-quart) both; /* exit対称 */
+  animation-delay: 0ms;
+}
+```
+
+### Step 4: icon cross-fadeとtabular numsを適用する
+
+```css
+.icon-slot {
+  position: relative;
+}
+
+.icon-slot > svg {
+  position: absolute;
+  inset: 0;
+  transition: opacity 140ms ease, transform 140ms ease, filter 140ms ease;
+}
+
+.icon-slot > .is-next {
+  opacity: 0;
+  transform: scale(0.92);
+  filter: blur(2px);
+}
+
+.icon-slot[data-state="on"] > .is-current {
+  opacity: 0;
+  transform: scale(1.06);
+  filter: blur(2px);
+}
+
+.icon-slot[data-state="on"] > .is-next {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+
+.metric {
+  font-variant-numeric: tabular-nums;
+}
+```
+
+### Step 5: 初回描画抑制を明示する
+
+```css
+html[data-ui-ready="false"] * {
+  transition: none !important;
+  animation: none !important;
+}
+
+html[data-ui-ready="true"] .interactive {
+  transition: opacity 160ms ease, transform 200ms var(--ease--out-quint);
+}
+```
+
+## 参考実装（Before / After）
+
+### Before
+
+```css
+.toggle__icon--on { display: none; }
+.toggle[data-state="on"] .toggle__icon--on { display: block; }
+.toggle[data-state="on"] .toggle__icon--off { display: none; }
+
+.counter {
+  font-variant-numeric: normal;
+}
+```
+
+### After
+
+```css
+.toggle__icon {
+  transition: opacity 140ms ease, transform 140ms ease, filter 140ms ease;
+}
+
+.toggle__icon--on {
+  opacity: 0;
+  transform: scale(0.92);
+  filter: blur(2px);
+}
+
+.toggle[data-state="on"] .toggle__icon--off {
+  opacity: 0;
+  transform: scale(1.06);
+  filter: blur(2px);
+}
+
+.toggle[data-state="on"] .toggle__icon--on {
+  opacity: 1;
+  transform: scale(1);
+  filter: blur(0);
+}
+
+.counter {
+  font-variant-numeric: tabular-nums;
+}
+```
+
+## 規約サマリ（この章で持ち帰るルール）
+
+- 同心円角丸は式で管理し、固定値コピーを禁止する
+- 光学補正は `1px` 単位で検証し、数学的中央より視認性を優先する
+- 影は単層禁止。top / contact / ambient を分離して調整する
+- staggerは「順序の可読性」が目的で、遅延演出を目的化しない
+- exit対称を必須化し、enterの `60%~80%` で閉じる
+- 意味変更アイコンは icon cross-fade を標準にする
+- ライブ数値は tabular nums を既定値にする
+- 初回描画抑制をUIレイヤーの初期化手順に組み込む
+
+## 理解チェック
+
+1. 同じ半径tokenを内外に適用すると、なぜ同心円角丸が破綻するか。  
+2. 多層影で top / contact / ambient を分離すると、何がレビューしやすくなるか。  
+3. enterだけ実装したUIが、運用フェーズでどんなUX負債を生むか。  
+4. `tabular-nums` を使わないライブ数値で、どの指標が不安定化するか。  
+5. 初回描画抑制を入れないと、hydration時に何が起きるか。
+
+## 次に読む章
+
+- モーション全体方針へ接続: [Animations](/references/animations/)
+- 数字組版の前提を深掘る: [Typography](/references/typography/)
+- 出荷時の品質判定へ接続: [Accessibility](/references/accessibility/)

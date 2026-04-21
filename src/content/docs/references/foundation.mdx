@@ -1,0 +1,111 @@
+---
+title: Foundation
+description: resetとcascade layerの責務を固定し、上書き不能なCSS崩壊を予防する設計基盤。
+---
+
+
+## シナリオ
+
+コンポーネント自体は正しいのに、ページ全体では見た目が崩れる。  
+原因を追うと `!important`、長いセレクタ、無秩序なimport順が混在している。  
+この章では、土台CSSを先に整え、以降の章が機能する前提を作ります。
+
+## まず結論: layer順を固定する
+
+```css
+@layer reset, tokens, base, components, utilities, overrides;
+```
+
+順序を固定しない限り、優先順位は毎回「読み込み順の偶然」に依存します。
+
+## なぜ壊れるのか
+
+- resetの範囲が過剰で、UAの有用な既定まで消してしまう
+- layer未定義で import順だけに依存している
+- ベースセレクタの詳細度が高く、コンポーネント側で上書きできない
+
+## 失敗コードを観察する
+
+```css
+* {
+  margin: 0;
+  padding: 0;
+  outline: none;
+}
+
+.page .content .card .title {
+  font-size: 1rem;
+}
+```
+
+問題:
+
+- focus可視性を消してアクセシビリティが破綻する
+- すべてをresetし、再実装コストが増える
+- 詳細度が高く、後続レイヤーで修正しにくい
+
+## 段階的に改善する
+
+### Step 1: layer責務を分離する
+
+```css
+@layer reset, tokens, base, components, utilities, overrides;
+```
+
+- `reset`: 最小限の正規化
+- `tokens`: カスタムプロパティ定義のみ
+- `base`: 要素既定
+- `components`: コンポーネント本体
+- `utilities`: 単機能クラス
+- `overrides`: 局所例外
+
+### Step 2: baseは低詳細度へ寄せる
+
+```css
+@layer reset {
+  :where(*) {
+    box-sizing: border-box;
+  }
+
+  :where(img, svg, video) {
+    max-inline-size: 100%;
+    block-size: auto;
+  }
+}
+```
+
+`:where()` を使うことで、後続のコンポーネント定義が自然に勝てる状態を作ります。
+
+### Step 3: reset対象を絞る
+
+- 消す: 不要な初期余白・box sizing差分・メディア溢れ
+- 残す: 見出しの意味的強調、フォーム意味、focus可視性
+
+## サードパーティCSSの扱い
+
+外部CSSは `components` より下位に隔離します。  
+アプリ側で勝つべき順を明示し、セレクタ競争で対処しません。
+
+```css
+@layer reset, tokens, base, vendor, components, utilities, overrides;
+```
+
+## 規約サマリ（この章で持ち帰るルール）
+
+- layer順を明示し、全体で固定運用する
+- resetは最小限に限定し、有用なUA既定は残す
+- baseは `:where()` を使って低詳細度を維持する
+- 外部CSS衝突はlayerで解決し、セレクタ増強で解決しない
+- focus可視性を土台で消さない
+
+## 理解チェック
+
+1. layer未定義のままimport順運用すると、なぜ回帰が増えるか。  
+2. `:where()` が上書き容易性に効く理由を説明できるか。  
+3. resetで消してはいけない要素規約は何か。  
+
+## 次に読む章
+
+- z軸の責務分離へ接続: [Z-Index](/references/z-index/)
+- トークン命名と配布ルールへ接続: [Tokens](/references/tokens/)
+- 命名責務の体系化へ接続: [Terminology](/references/terminology/)

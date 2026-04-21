@@ -1,0 +1,83 @@
+---
+title: Ultimate CSS Web Design
+description: リファレンスを暗記するのではなく、実務で使いこなすための学習導線。
+---
+
+## Agent Skillsとして導入する
+
+本ドキュメントの内容は Agent Skills (`ultimate-css-web-design`) としても配布しています。
+記事を読むだけでなく、エージェントに同じ判断基準を持たせて利用できます。
+
+```bash
+npx skills add https://github.com/hrdtbs/web-design-system --skill ultimate-css-web-design
+```
+
+導入後、CSS / レイアウト / タイポグラフィ / アニメーション / A11y に関わる作業でこの skill が自動的に適用されます。
+
+## このサイトについて
+
+このサイトの目的は、リファレンスを「調べる」だけでなく「使える判断力に変える」ことです。  
+各章は次の順序で学べるように設計しています。
+
+1. シナリオ（何に困るか）
+2. 何が起きているか（仕様と挙動）
+3. 失敗コード（どこが問題か）
+4. 段階的改善（どう直すか）
+5. 規約サマリ（再利用できる形にまとめる）
+
+## 読者前提
+
+- 実装だけでなくレビューも担当する上級者
+- デザインシステムを運用しているフロントエンド職
+- PRで「根拠付きの指摘」を求められる人
+
+## リファレンス一覧
+
+- [Responsive](/references/responsive/) — 場当たりのブレークポイント運用を卒業し、再現可能な判断手順でResponsiveを設計する。
+- [Terminology](/references/terminology/) — 責務・意味・境界を固定し、レビュー精度を上げるための語彙契約と判断基準。
+- [Foundation](/references/foundation/) — resetとcascade layerの責務を固定し、上書き不能なCSS崩壊を予防する設計基盤。
+- [Tokens](/references/tokens/) — CSS custom propertiesを仕様化し、命名・配布・利用契約を壊れない形で運用する。
+- [Color](/references/color/) — 色を感覚ではなく構造で扱い、階層・可読性・dark modeを一貫運用するための実装基準。
+- [Z-Index](/references/z-index/) — 重なり順の場当たり運用を止め、absolute/relative分離で破綻しないレイヤー設計へ移行する。
+- [Typography](/references/typography/) — 可読性、日英混在、数値UI、流動タイプ設計を含む上級者向けタイポグラフィ基準。
+- [Animations](/references/animations/) — 実務事故から逆算して、モーション設計を判断順序・実装規約・監査観点まで統合する上級者向けガイド。
+- [Keyframes](/references/keyframes/) — `@keyframes`の命名・責務分離・合成設計・scroll連動運用をシナリオで再構成。
+- [Accessibility](/references/accessibility/) — 出荷前に必須となるA11y基準を、実装パターン・監査観点・運用ルールまで含めて整理。
+- [Visual Details](/references/visual-details/) — 仕上がり品質を決める視覚ディテール原則と実装チェック。
+
+## 典型シナリオから探す
+
+| 現場の症状 | 最初に読む章 | 次に読む章 |
+| --- | --- | --- |
+| ブレークポイントが増え続ける | [Responsive](/references/responsive/) | [Terminology](/references/terminology/) |
+| 命名レビューで毎回揉める | [Terminology](/references/terminology/) | [Responsive](/references/responsive/) |
+| 上書きが効かずCSS競合が増える | [Foundation](/references/foundation/) | [Tokens](/references/tokens/) |
+| 命名はあるのに値設計が崩れる | [Tokens](/references/tokens/) | [Color](/references/color/) |
+| 色は綺麗だが読みづらい | [Color](/references/color/) | [Accessibility](/references/accessibility/) |
+| モーダルとヘッダーが衝突する | [Z-Index](/references/z-index/) | [Foundation](/references/foundation/) |
+| 日本語ページだけ文字組が崩れる | [Typography](/references/typography/) | [Accessibility](/references/accessibility/) |
+| モーションが派手で疲れる | [Animations](/references/animations/) | [Visual Details](/references/visual-details/) |
+| リリース前チェックが属人化している | [Accessibility](/references/accessibility/) | [Visual Details](/references/visual-details/) |
+
+## Ten Core Principles（学習時に常に戻る基準）
+
+1. CSS は命令ではなく提案  
+2. 昇格順は `Static -> Intrinsic -> Container -> Media`  
+3. 命名は見た目ではなく責務  
+4. モーションは必要性があるものだけ  
+5. A11y は任意ではなく出荷条件  
+6. 防御的設計（文字量増、欠損、ズーム）を前提にする  
+7. progressive enhancement を優先する  
+8. 小さなディテールの積み上げを軽視しない  
+
+## まず守る最低チェック
+
+- [ ] `transition-property: all` を使っていない  
+- [ ] `Container` を汎用ラッパー名にしていない  
+- [ ] `line-height` と `measure` を本文可読性基準で確認した  
+- [ ] reduced-motion の分岐を設計している  
+
+## 学習が進んだら
+
+最終的には各章の「規約サマリ」を実装判断へ直結できる状態を目標にしてください。  
+このサイトは知識の暗記ではなく、判断の再現性を作るための教材です。

@@ -1,0 +1,254 @@
+---
+title: Design System Terminology
+description: 責務・意味・境界を固定し、レビュー精度を上げるための語彙契約と判断基準。
+---
+
+
+命名は見た目ラベルではなく、責務境界を固定する設計契約です。  
+この章は「語彙をどう定義するか」ではなく、「実務レビューで迷わない状態をどう作るか」に焦点を置きます。
+
+## シナリオ
+
+新規LPの実装で、同じUIに対して `cta-button` / `primary-link` / `hero-action` が混在している状態を想定してください。見た目は近くても、遷移・送信・開閉の責務が混ざると、レビュー時に「どの変更が仕様変更で、どの変更が見た目調整か」が読み取れなくなります。  
+語彙の揺れは、そのまま設計境界の揺れです。設計境界が揺れると、A/Bテスト、計測、アクセシビリティ修正、コンポーネント分割のすべてでコストが跳ね上がります。
+
+## 2) なぜ起きるか
+
+語彙崩壊は、ほとんどの場合「短期最適の命名」が積み上がって発生します。画面都合で `Container` を「なんとなく囲む箱」として使い始めると、CSS `container` の意味と衝突し、Container Query導入時に破綻します。  
+また、視覚上ボタンに見えるから `Button` と呼ぶ運用を許すと、`<a>` と `<button>` の責務差（履歴・遷移・送信・キーボード挙動）をレビューで捉えられなくなります。
+
+このガイドが固定する原則は次の4つです。
+
+- Web標準語彙を再定義しない
+- 見た目ではなく責務で命名する
+- 構造 / 振る舞い / 再利用単位 / テーマを混同しない
+- 1語1義を守る
+
+## 3) 失敗コード/命名例
+
+以下は、責務と命名がズレた典型例です。`Container` が単なる幅ラッパーに使われ、遷移要素を `Button` と呼んでいます。
+
+```html
+<section class="pricing-block">
+  <div class="pricing-container">
+    <a class="primary-button" href="/pricing">料金を見る</a>
+  </div>
+</section>
+```
+
+この状態では、クラス名から責務を逆算できません。特に `primary-button` は「見た目」と「操作意味」が混線しており、実装者ごとに判断基準が変わります。
+
+## 4) 段階的改善
+
+最初に語彙を再割り当てし、その後にHTML責務へ一致させます。最後にCSSを責務名へ寄せると、レビュー可能性が一段上がります。
+
+```html
+<!-- Before -->
+<section class="pricing-block">
+  <div class="pricing-container">
+    <a class="primary-button" href="/pricing">料金を見る</a>
+  </div>
+</section>
+
+<!-- After -->
+<section class="pricing-section">
+  <div class="pricing-inner">
+    <a class="pricing-link" href="/pricing">料金を見る</a>
+  </div>
+</section>
+```
+
+```css
+/* Before: 意味が曖昧 */
+.pricing-container {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+
+/* After: Inner の責務を明示 */
+.pricing-inner {
+  max-inline-size: 72rem;
+  margin-inline: auto;
+  padding-inline: 1rem;
+}
+```
+
+`Container` は CSS `container` を適用した要素のみに限定してください。単なる幅制御は `Inner`、外側余白や周辺配置は `Outer` が責務です。
+
+## 5) 判断の地図
+
+迷ったときは、まずHTML責務を先に確定します。そこから構造責務へ下ろすと、語彙衝突を回避できます。
+
+| 判断ポイント | 使う語彙 | 判定ルール |
+| --- | --- | --- |
+| クリックで別URLへ遷移 | `Link` | 要素が `<a>` なら見た目に関係なく `Link` |
+| フォーム送信・UI状態変更 | `Button` | 要素が `<button>` なら `Button` |
+| ページ内の意味区画 | `Section` | 情報構造で区切る領域に使用 |
+| 幅制御と中央寄せ | `Inner` | `max-inline-size` と `margin-inline: auto` を担う |
+| 外側余白・隣接関係 | `Outer` | コンテンツ群の外周配置を担う |
+| Container Query の基点 | `Container` | CSS `container` 適用要素のみ |
+
+## 6) 命名一貫性とベース基盤
+
+語彙を決めたあと、プロジェクト横断の命名規則とベーススタイル基盤を整えると、レビュー時の揺れが消えます。
+
+### 命名規則は1つに絞る
+
+- BEM / utility-first / SUIT などのどれを採用しても良いが、プロジェクト内で混在させない
+- 見た目名（`.red-button`、`.small-margin`）は禁止。責務名に寄せる
+- 共有しない固有要素は component-scoped 名（`.card__title`）を使う
+- 自作の dashed ident（`--` 接頭辞）を custom property / keyframes で徹底する
+
+### 低特異度ベースは `:where()` で敷く
+
+ベーススタイルの specificity が高いと、コンポーネント側での上書きが specificity 競争になります。要素広域の既定値は `:where()` で包み、`@layer base` と併用します。
+
+```css
+@layer base {
+  :where(button, [type="button"], [type="submit"]) {
+    cursor: pointer;
+    font: inherit;
+  }
+}
+```
+
+派生コンポーネントが通常の class セレクタで普通に上書きできる状態を維持してください。
+
+### `z-index` は階層トークンで管理する
+
+`z-index: 9999` のような魔法値を増やすと、重なり順の意味が追えません。レイヤー用のトークンを一群だけ用意し、常にそこから選びます。
+
+```css
+:root {
+  --z--base: 0;
+  --z--sticky: 10;
+  --z--popover: 20;
+  --z--tooltip: 30;
+  --z--toast: 40;
+  --z--dialog: 50;
+}
+
+.app-header {
+  position: sticky;
+  z-index: var(--z--sticky);
+}
+```
+
+- トークン数は `6` 〜 `8` 程度に抑える
+- popover や dialog は `z-index` より top layer（`[popover]` / `<dialog>`）を優先する
+- stacking context をむやみに増やさない（`transform` / `filter` / `container-type` の副作用に注意）
+
+## 7) 外部関係レイアウト規約
+
+コンポーネントは**自分の外側**に関する宣言を持ってはいけません。
+
+禁止する宣言:
+
+- `margin`
+- `position` と `inset` / `top` / `right` / `bottom` / `left`
+- `grid-area` / `order`
+- 兄弟要素に依存する間隔指定
+
+これらは**親側の責務**です。共通のラッパ（例: `SectionInner`、`ComponentOuter`）か、親の grid / flex 側で指定します。
+
+```html
+<!-- Before: Card 自体が外部余白を持つ -->
+<section class="section">
+  <article class="card card--with-margin">...</article>
+  <article class="card card--with-margin">...</article>
+</section>
+
+<!-- After: 配置責務は親側に集約 -->
+<section class="section">
+  <div class="section__grid">
+    <article class="card">...</article>
+    <article class="card">...</article>
+  </div>
+</section>
+```
+
+```css
+.section__grid {
+  display: grid;
+  gap: 1.5rem;
+}
+```
+
+これにより、`Card` は別の親レイアウトに移植されても破綻しません。
+
+## 8) コンポーネント抽象の落とし穴
+
+早すぎる抽象化は、将来の保守負債になります。
+
+### 3回ルール
+
+- 1度しか登場しないものはコンポーネントにしない
+- 2度目の登場では複製で様子を見る
+- 3度目以降の再利用が見えた時点で抽象化する
+
+### boolean props の肥大
+
+`isLarge` / `isGhost` / `isDisabled` / `isFlush` のようなフラグが 5 個を超えたら、**バリアントに分割する**サインです。個別フラグの組合せが指数的に増え、意図しない組合せが仕様化されてしまいます。
+
+### 「God props」を作らない
+
+任意の inline style やサイズ値を受け取るプロップは、型付きのAPI面を失わせます。自由度は custom property のオーバーライドで提供します。
+
+## 9) API型 custom property オーバーライド
+
+コンポーネント側が公開する custom property を典型化すると、拡張はすべて外側から行えます。
+
+```css
+.card {
+  --card--background: var(--color--surface);
+  --card--radius: calc(16 / 16 * 1rem);
+  --card--padding: calc(24 / 16 * 1rem);
+
+  background: var(--card--background);
+  border-radius: var(--card--radius);
+  padding: var(--card--padding);
+}
+
+/* 呼び出し側で外から上書き */
+.card[data-variant="ghost"] {
+  --card--background: transparent;
+  --card--padding: calc(16 / 16 * 1rem);
+}
+```
+
+利点:
+
+- コンポーネント本体のルールは一切変更不要
+- 上書き面が明示され、レビューしやすい
+- specificity の戦争を回避できる
+
+## 10) 規約サマリ
+
+`Element` はHTML要素そのもの、または1対1対応する最小単位です。`Section` は意味的・構造的領域です。`Container` はCSS `container` のみ、`Inner` は幅制御、`Outer` は外周配置という責務分離を厳守します。  
+命名で禁止するのは、既存語彙の再定義と見た目優先の誤命名です。特に `Link` / `Button` は視覚でなくHTML責務で決め、1語1義を崩さない運用を採用してください。
+
+基盤面としては以下を固定します。
+
+- プロジェクトの命名規則は1つに絞る
+- ベーススタイルは `:where()` + `@layer` で低特異度にする
+- `z-index` は `--z--*` トークンで管理し、魔法値を禁止する
+- コンポーネントは外部関係（`margin` / `position` / `grid-area`）を持たない
+- 3回再利用されてから抽象化する
+- 可変軸は boolean props でなく custom property で露出する
+
+## 11) 理解チェック
+
+1. 見た目がボタンでも要素が `<a>` のとき、語彙は `Link` と `Button` のどちらを採用すべきですか。理由も説明してください。  
+2. 幅制御だけを担うラッパーに `Container` を使うと、将来どの設計上の衝突が起きますか。  
+3. あなたの現在のコードベースで、1語1義に違反している語彙を1つ挙げ、どう改名するとレビュー容易性が上がるか示してください。  
+4. ベーススタイルを `:where()` で包む運用に変えると、コンポーネント側の specificity 戦略はどう変わりますか。  
+5. `z-index: 9999` が増殖した既存コードを `--z--*` トークンへ移行するとき、最初に決めるべきレイヤー順を示してください。
+
+## 12) 次章導線
+
+この章で語彙の責務境界とベース基盤を固定したら、次はレスポンシブ戦略との接続を確認してください。  
+語彙契約をレイアウト規約へ落とすことで、Breakpoint対応時の命名破綻を防げます。
+
+- レイアウト責務との接続: [Responsive](/references/responsive/)
+- 可読性と文字組の原則: [Typography](/references/typography/)

@@ -1,0 +1,178 @@
+---
+title: Accessibility Baseline
+description: 出荷前に必須となるA11y基準を、実装パターン・監査観点・運用ルールまで含めて整理。
+---
+
+
+この章は「アクセシビリティ対応を足す」ためではなく、設計レビュー時点で不具合を未然に除去するための教材です。  
+対象読者は実装経験者を前提とし、単発のテクニックではなく、判断の順序と失敗の再発防止を扱います。
+
+## シナリオ
+
+あなたはデザインシステムのリリース担当として、通知センター画面の最終レビューを行っています。  
+UIは見た目上は完成しているものの、運用環境では「ダークテーマで本文が薄い」「キーボードでバルク操作に到達しづらい」「アニメーションが強すぎて集中を阻害する」といった報告が断続的に発生しています。
+
+この状況では、個別修正を繰り返すほど規約が分散し、同じ事故が再発します。必要なのは、`contrast`・`focus-visible`・`hit area`・`reduced-motion tier`・`keyboard operability`・`ARIA/hidden戦略` を一つの判断フレームに統合し、PR時点で落とせる状態を作ることです。
+
+## 背景
+
+アクセシビリティ不備の大半は、技術不足よりも責務分離の曖昧さから発生します。  
+たとえば「見た目の調整はCSS、読み上げはARIA、操作はJS」という分業は合理的に見えますが、実際には同一コンポーネントの責務を断片化し、仕様判断を遅らせます。
+
+出荷品質を安定させるには、次の3点を同時に成立させる必要があります。
+
+- 知覚可能性: コントラストとフォーカス可視性がテーマ差分を越えて成立すること
+- 操作可能性: ヒット領域とキーボード導線が入力デバイス差分を越えて成立すること
+- 意味整合性: ネイティブ要素優先とARIA/hidden戦略が矛盾なく成立すること
+
+## 失敗例
+
+以下は実務で頻出する「見た目は通るが運用で破綻する」失敗例です。
+
+### 失敗1: focusを消してhoverで代用
+
+```css
+.action-link:focus {
+  outline: 0;
+}
+
+.action-link:hover {
+  color: var(--color--accent-700);
+}
+```
+
+問題は2つあります。  
+第一に、キーボード利用時の現在地が消失し、`keyboard operability` の基盤が崩れます。第二に、色変化のみで状態差分を伝えているため、コントラスト条件や知覚特性に依存しすぎます。
+
+### 失敗2: アイコンボタンの視覚サイズのみ最適化
+
+```css
+.toolbar__icon-button {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+}
+```
+
+密集UIでは誤タップ率が上昇し、モバイルでの選択操作に遅延が発生します。  
+見た目寸法と操作寸法を同一レイヤーで扱っていることが根本原因です。
+
+### 失敗3: ARIAで意味を後付けし、非表示戦略が衝突
+
+```html
+<div role="button" aria-label="通知を既読にする" tabindex="0">...</div>
+<span aria-hidden="true" tabindex="0">!</span>
+```
+
+ネイティブ要素を回避した結果、キー契約・フォーカス順・読み上げ整合が崩れます。  
+さらに `aria-hidden="true"` とフォーカス可能要素の併用で、ATと実操作の認知モデルが不一致になります。
+
+## 段階改善
+
+ここでは、失敗例を「最小修正→構造改善→規約化」の順で改善します。
+
+### Step 1: 知覚レイヤーを再構成する（Contrast + Focus）
+
+テキストは本文 `4.5:1` 以上、大きい文字と意味を持つ非テキストUIは `3:1` 以上を最低基準にします。  
+評価はライト/ダーク両テーマで実施し、ページ背景ではなく実際の表示面（カード・パネル）で判定します。
+
+`focus-visible` を単一の契約点として定義し、マウス操作時とキーボード操作時の視覚負荷を分離します。
+
+### Step 2: 操作レイヤーを分離する（Hit Area + Keyboard）
+
+最小ヒット領域は Web `40x40` px、iOS `44x44` pt、Android `48x48` dp を遵守します。  
+視覚サイズを小さく保ちたい場合は疑似要素で操作面を拡張し、隣接要素との重なりを防ぐ余白設計を行います。
+
+キーボード導線では、`Tab` 到達順をDOM順に一致させ、`tabindex > 0` を禁止します。  
+ダイアログは「開く時に内部へ移動、閉じる時に起点へ復帰」を標準契約にします。
+
+### Step 3: 動きと意味の運用を固定化する（Reduced Motion + ARIA/Hidden）
+
+`prefers-reduced-motion` は一律停止ではなく tier で管理します。  
+`disable`（no-preference時のみ有効）、`simplify`（移動量削減）、`shorten`（時間短縮）、`keep`（機能維持）をコンポーネント単位で選択し、実装意図をコメントまたは設計メモに残します。
+
+ARIAは「ネイティブ優先、不足分のみ補完」を原則にします。  
+非表示戦略は目的別に明示し、`display: none` / `visibility: hidden` / `.visually-hidden` / `aria-hidden="true"` の誤用をレビューで即時検出できる状態を作ります。
+
+### Before / After 例（focus + hit area + reduced motion）
+
+Before:
+
+```css
+.icon-button {
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  transition: all 240ms ease;
+}
+
+.icon-button:focus {
+  outline: 0;
+}
+```
+
+After:
+
+```css
+.icon-button {
+  position: relative;
+  inline-size: 1.5rem;
+  block-size: 1.5rem;
+  transition-property: background-color, box-shadow, transform;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+
+.icon-button::before {
+  content: "";
+  position: absolute;
+  inset: -0.5rem; /* 40x40相当の操作面を確保 */
+}
+
+.icon-button:focus-visible {
+  outline: calc(2 / 16 * 1rem) solid var(--color--focus-ring);
+  outline-offset: calc(2 / 16 * 1rem);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .icon-button {
+    transition-duration: 80ms; /* shorten tier */
+    transform: none;
+  }
+}
+```
+
+## 判断フロー
+
+実装時の分岐を、次の順序で固定します。
+
+1. 要素はネイティブで表現できるか  
+2. 状態差分は色以外でも知覚できるか（コントラストと形状/輪郭）  
+3. `:focus-visible` で現在地を明確化できているか  
+4. ヒット領域最小値を満たすか（見た目寸法と分離しているか）  
+5. `Tab` と `Esc` を含むキー契約が成立しているか  
+6. モーションは tier で意図が説明できるか  
+7. hidden戦略はAT挙動と矛盾していないか
+
+この判断フローは、UI仕様策定・実装・レビューで共通利用します。  
+プロジェクト内で別の順序が存在する場合、基準が二重化して事故率が上がるため、どちらかに統一してください。
+
+## 規約サマリ
+
+- Contrast: 本文 `4.5:1` 以上、大きい文字/意味を持つ非テキストUI `3:1` 以上（ライト/ダーク両方で検証）
+- Focus: すべての操作要素に `:focus-visible` を実装し、`outline: 0` 単独利用を禁止
+- Hit Area: Web `40x40` px、iOS `44x44` pt、Android `48x48` dp
+- Reduced Motion: `disable` / `simplify` / `shorten` / `keep` のtier運用を必須化
+- Keyboard: DOM順に沿った到達性、トラップ回避、`tabindex > 0` 禁止、ダイアログ復帰契約
+- ARIA/Hidden: ネイティブ優先、ARIAは補完用途、hidden手段は目的別に選択
+
+## 理解チェック
+
+1. `:focus-visible` と `:focus` を同時に定義するとき、ポインタ操作時の視覚ノイズを抑えつつキーボード現在地を保証する設計方針を説明してください。  
+2. 小型アイコンボタンで視覚サイズを維持したまま hit area を拡張する場合、重なり判定と隣接要素間隔をどう設計しますか。  
+3. `prefers-reduced-motion` を `disable` 一択にしない理由を、機能性アニメーションの観点から述べてください。  
+4. `aria-hidden="true"` を適用してよい要素と避けるべき要素を、フォーカス可否の観点で整理してください。  
+5. コントラスト評価を「ページ背景」ではなく「実際の表示面」で測るべき理由を、コンポーネント再利用の観点で説明してください。
+
+## 次章導線
+
+この章で定義した基準を、動きの具体実装へ接続する場合は [Animations](/references/animations/) を参照してください。  
+命名契約や設計境界との接続を確認したい場合は [Terminology](/references/terminology/) を参照してください。

@@ -1,0 +1,318 @@
+---
+title: Typography
+description: 可読性、日英混在、数値UI、流動タイプ設計を含む上級者向けタイポグラフィ基準。
+---
+
+
+本章は「文字をきれいに見せる」ためではなく、**運用時に壊れない文章UI**を設計するための章です。  
+設計対象は見た目よりも、更新頻度の高い実務画面で起きる再現性ある破綻です。
+
+## シナリオ
+
+想定ケースは、次の条件が同時に存在するSaaS管理画面です。
+
+- 見出しは短文、本文は日英混在で長文化しやすい
+- 価格・件数・時間などの数値が1秒単位で更新される
+- 日本語UIを主軸にしつつ、Safariを含む複数エンジンで同品質を維持する
+- 小型端末から大画面まで `clamp()` による流動タイプを採用する
+
+この条件で破綻しやすいのは、`text-wrap` の過信、行間不足、measure未制御、数値桁揺れ、`clamp()` 最小値の読みづらさです。以下はその潰し込み手順です。
+
+## 仕様背景
+
+### 1) フォント戦略は `sans-serif` 優先
+
+- 第一候補を `sans-serif` に固定することで、OS最適化済みグリフと高速描画の恩恵を得る
+- ブランド書体は要件時のみ上乗せし、フォールバックを必ず `sans-serif` へ戻す
+- `system-ui` を無差別採用すると、意図しないUIフォント混在でトーンが崩れる
+
+```css
+:root {
+  font-family: sans-serif;
+}
+```
+
+### 2) `text-wrap` の役割分離
+
+- 見出し: `text-wrap: balance` を既定（短行の段差抑制）
+- 本文: 英文中心のみ `pretty` 候補、日本語本文は `wrap` を基本
+- 背景: 日本語の禁則や分かち書き特性とSafari実装差分により、`pretty` は意図外の改行を誘発しやすい
+
+### 3) 行間とmeasureは可読性の下限値を持つ
+
+- 本文 `line-height >= 1.5`
+- 見出し `line-height: 1.1 ~ 1.3`
+- 長文 measure は `45ch ~ 75ch`（狭すぎる視線往復と広すぎる行頭探索を回避）
+
+### 4) 数値UIは `tabular-nums` を標準化
+
+- 更新時の横揺れを止め、表・カード・インジケータの視線安定性を維持
+- カウンター、価格、割合、時刻、進捗率は原則すべて対象
+
+### 5) `clamp()` は最小値を `rem` で固定
+
+- 最小値を `px` や `vw` 依存にすると、ズーム・小画面で読めない値に落ちる
+- 下限を `rem` で固定してアクセシビリティと流動性を両立する
+
+## 失敗コード
+
+以下は実務で頻出する失敗実装です。  
+意図は「モダン化」でも、結果は日本語可読性と更新UI安定性の悪化です。
+
+```css
+/* Before: 典型的な破綻パターン */
+:root {
+  font-family: system-ui;
+}
+
+.article-title {
+  text-wrap: pretty;
+  line-height: 1;
+}
+
+.article-body {
+  text-wrap: pretty;
+  line-height: 1.35;
+  max-width: 90ch;
+}
+
+.metric {
+  font-variant-numeric: normal;
+}
+
+.body-copy {
+  font-size: clamp(14px, 1.2vw, 18px);
+}
+```
+
+問題点:
+
+- 日本語本文へ `pretty` を一律適用している
+- 見出しと本文の行間が狭く、文字密度だけ高い
+- measureが長すぎて追視コストが高い
+- 数値更新時に桁幅が揺れる
+- `clamp()` 最小値が `px` で、ユーザー設定拡大との整合が弱い
+
+## 段階改善
+
+一気に理想形へ飛ばず、破綻源ごとに段階修正します。
+
+### Step 1: 既定フォントとラップ戦略を分離
+
+```css
+:root {
+  font-family: sans-serif;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  text-wrap: balance;
+  line-height: 1.2;
+}
+
+:where(p) {
+  text-wrap: pretty;
+  line-height: 1.6;
+}
+
+:where(p):lang(ja) {
+  text-wrap: wrap;
+}
+```
+
+### Step 2: 本文measureと数値安定性を固定
+
+```css
+.prose {
+  max-width: 65ch;
+}
+
+.metric,
+.price,
+.timer,
+.counter {
+  font-variant-numeric: tabular-nums;
+}
+```
+
+### Step 3: 日本語機能と流動タイプを安全側へ
+
+```css
+:lang(ja) :where(h1, h2, h3) {
+  font-feature-settings: "palt" 1, "vpal" 1;
+}
+
+.body-copy {
+  font-size: clamp(1rem, 0.94rem + 0.5svi, 1.125rem);
+}
+```
+
+### Before / After（統合版）
+
+```css
+/* After: 運用安定版 */
+:root {
+  font-family: sans-serif;
+}
+
+:where(h1, h2, h3, h4, h5, h6) {
+  text-wrap: balance;
+  line-height: 1.2;
+}
+
+:where(p) {
+  text-wrap: pretty;
+  line-height: 1.6;
+}
+
+:where(p):lang(ja) {
+  text-wrap: wrap;
+}
+
+.prose {
+  max-width: 65ch;
+}
+
+.metric,
+.price,
+.timer,
+.counter {
+  font-variant-numeric: tabular-nums;
+}
+
+.body-copy {
+  font-size: clamp(1rem, 0.94rem + 0.5svi, 1.125rem);
+}
+```
+
+## 判断フロー
+
+次の順序で判断すると、実装レビュー時の迷いを減らせます。
+
+1. 文字種は何か  
+   - 見出しなら `balance`  
+   - 本文なら次へ
+2. 本文は日本語主体か  
+   - Yes: `wrap` を基本  
+   - No: `pretty` を候補
+3. 行間は閾値を満たすか  
+   - 本文 `>= 1.5` / 見出し `1.1 ~ 1.3`
+4. measureは `45ch ~ 75ch` に収まるか
+5. 変動数値を含むか  
+   - Yes: `tabular-nums` 必須
+6. 流動タイプか  
+   - Yes: `clamp(min-rem, fluid, max)` を満たすか
+7. Safariで和文折り返しを確認したか  
+   - NGなら `pretty` 適用範囲を縮小
+
+## フォントロード運用
+
+### `font-display` と描画戦略
+
+- 既定は `font-display: swap`。テキストを先に描画し、ブランドフォントは後追いで差し替える。
+- ブランドフォントの FOUT を避けたい場合のみ `optional` を検討する。
+- 本文で `optional` を使うと、低速回線のユーザーは永続的にフォールバック表示となる点を踏まえる。
+
+### フォールバックのメトリクス整合
+
+ブランドフォントとフォールバックで字幅や高さが大きくずれると、切り替え時に CLS が発生します。フォールバック用の `@font-face` に `size-adjust` / `ascent-override` / `descent-override` / `line-gap-override` を指定し、見た目のメトリクスを揃えます。
+
+```css
+@font-face {
+  font-family: "FallbackSans";
+  src: local("Hiragino Sans"), local("Yu Gothic UI"), local("Arial");
+  size-adjust: 104%;
+  ascent-override: 90%;
+  descent-override: 22%;
+  line-gap-override: 0%;
+}
+
+:root {
+  font-family: "BrandSans", "FallbackSans", sans-serif;
+}
+```
+
+### `font` shorthand の副作用
+
+`font` shorthand は `font-size-adjust` / `font-kerning` / `font-feature-settings` などを黙ってリセットします。日本語組版で `palt` / `vpal` を効かせたい箇所では、`font` shorthand を避けて longhand で指定してください。
+
+```css
+/* Before: font shorthand で feature-settings が初期化される */
+.title {
+  font: bold 1.5rem/1.2 sans-serif;
+}
+
+/* After: longhand で feature-settings を保持 */
+.title {
+  font-family: sans-serif;
+  font-weight: bold;
+  font-size: 1.5rem;
+  line-height: 1.2;
+  font-feature-settings: "palt" 1;
+}
+```
+
+## 長文とCMSコンテンツへの耐性
+
+エディトリアル原稿や翻訳後テキストは、こちらの想定より長くなりがちです。破綻を避けるための既定を用意しておきます。
+
+### 分割できないトークン対策
+
+URL、ID、ハッシュ、プログラムコードのような「長い非分割語」を含む可能性があるコンテナには `overflow-wrap: anywhere` を指定します。
+
+```css
+.prose {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+```
+
+`word-break: break-all` は日本語で意図しない途中改行を招くため、原則は `overflow-wrap` 側を使います。
+
+### CMS由来の余白衝突
+
+CMSで挿入されるブロックは、想定外の順序で積み重なります。兄弟間余白は親側で `:where()` + `* + *` パターンに寄せ、ブロック自身に `margin` を持たせないのが安全です。
+
+```css
+:where(.prose) > * + * {
+  margin-block-start: 1em;
+}
+
+:where(.prose h2) {
+  margin-block-start: 2em;
+}
+```
+
+新種のブロック型が追加されても、既存の余白ロジックに干渉しません。
+
+### 長文 measure と行間の下限保持
+
+`max-inline-size: 65ch` と `line-height >= 1.5` を基底に敷いておけば、長文が増えても視線往復の破綻を防げます。見出しは balance、本文は wrap、和文で Safari を含む場合は `pretty` を避ける運用をそのまま維持します。
+
+## 規約サマリ
+
+- `sans-serif` を既定の第一候補とする
+- 見出しは `text-wrap: balance`
+- 本文は英語中心のみ `pretty` を検討し、日本語本文は `wrap` を基本にする
+- 日本語とSafari差分を前提に、和文本文の改行を実機で検証する
+- 本文 `line-height >= 1.5`、見出し `1.1 ~ 1.3`
+- measure は `45ch ~ 75ch`
+- 数値UIは `font-variant-numeric: tabular-nums`
+- `clamp()` の最小値は必ず `rem`
+- `font-display` は原則 `swap`、フォールバックはメトリクス整合を取る
+- `font` shorthand は feature-settings を飛ばすため、重要箇所では longhand を使う
+- 長文コンテナは `overflow-wrap: anywhere` で非分割語に備える
+- CMS配下は `:where() + * + *` で兄弟間余白を管理する
+
+## 理解チェック
+
+1. なぜ日本語本文に `text-wrap: pretty` を一律適用しないのか。Safari差分も含めて説明できるか  
+2. `line-height` を本文 `1.6` から `1.35` に下げた場合、可読性とスキャン速度にどんな副作用が出るか  
+3. measureを `90ch` にしたとき、視線移動と読了速度にどのような影響が出るか  
+4. `tabular-nums` 未適用の価格カードで起こるUI崩れを、更新頻度の高い画面で具体化できるか  
+5. `clamp(14px, 1.2vw, 18px)` がアクセシビリティ上なぜ危険か、`rem` 下限版へ置換できるか
+
+## 次章導線
+
+- レイアウト閾値と `clamp()` 設計の元式を詰める: [Responsive](/references/responsive/)
+- 可読性以外の出荷基準（フォーカス、コントラスト、動き）を接続する: [Accessibility](/references/accessibility/)
+- 文字周辺の最終品質（影、境界、アニメ連動）を仕上げる: [Visual Details](/references/visual-details/)

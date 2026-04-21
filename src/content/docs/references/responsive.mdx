@@ -1,0 +1,254 @@
+---
+title: Responsive CSS Rules
+description: 場当たりのブレークポイント運用を卒業し、再現可能な判断手順でResponsiveを設計する。
+---
+
+
+## シナリオ
+
+新しいカードコンポーネントを実装した直後は綺麗に見えるのに、配置先が変わるたびにメディアクエリが増えていく。  
+結果として「この値は何のため？」が誰にも説明できないCSSが積み上がる。  
+この章では、この状態を防ぐための判断順序を学びます。
+
+## まず結論: 昇格順を固定する
+
+1. Static  
+2. Intrinsic responsiveness  
+3. Container queries  
+4. Media queries  
+
+上位で解けるなら下位に進まない。  
+この順番を守るだけで、問い合わせ条件と保守コストの多くが減ります。
+
+## なぜ壊れるのか
+
+- 先に `@media` へ逃げると、コンポーネントの文脈依存が増える
+- 無名 container はネスト時に解釈を誤らせる
+- 閾値の根拠が曖昧だと、改修時に値だけが増殖する
+
+## 失敗コードを観察する
+
+```css
+.card-list {
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 768px) {
+  .card-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (min-width: 1024px) {
+  .sidebar .card-list {
+    grid-template-columns: 1fr;
+  }
+}
+```
+
+問題:
+- `min-width` 形式で可読性が低い
+- 文脈差分（`.sidebar`）をviewportで吸収しようとしている
+- 閾値の算出根拠がない
+
+## 段階的に改善する
+
+### Step 1: Tier 1 で解けるか確認
+
+```css
+.card-list {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+}
+```
+
+この時点で要件を満たすなら query は不要です。
+
+### Step 2: Tier 2 へ昇格（文脈依存がある場合）
+
+```css
+:scope {
+  container: --cards / inline-size;
+}
+
+@container --cards (inline-size >= calc(420 / 16 * 1rem)) {
+  .card-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+```
+
+改善点:
+- `container-name` を明示して意図を固定
+- `inline-size` で論理軸に合わせる
+- `calc()` で閾値の由来を残す
+
+### Step 3: Tier 3 は最後に使う
+
+- ページ全体のマクロ切替
+- viewport固定UI
+- 全幅固定かつ再利用しないブロック
+
+## 判断の地図
+
+| 症状 | まず試す | 使うべき手段 |
+| --- | --- | --- |
+| 小要素で崩れない | Static | query不要 |
+| 同一UIが複数文脈で崩れる | Tier 2 | named container query |
+| ページ構造自体を切り替えたい | Tier 3 | media query |
+| 閾値理由が説明できない | 設計見直し | `calc()`で分解 |
+
+## 実務で頻出の注意点
+
+- `vw` / `vh` は原則禁止。`svi` / `svb` 系へ置換する
+- `@media` / `@container` 条件内で `var()` は使わない
+- `.container` を汎用名で使わない
+- `height: 100%` は親高が明示されている場合のみ許可
+
+## レイアウトの落とし穴
+
+レスポンシブ周辺で頻出する、レビュー時に必ず検出すべき失敗パターンです。
+
+### `width: 100%` の誤用
+
+ブロック要素は既定で幅いっぱいを占めるため、`width: 100%` は多くの場合冗長です。使うべきは以下の条件に限定します。
+
+- `display: inline-block` / `inline-flex` / `inline-grid` の要素
+- `<input>` など置換要素で既定幅を上書きしたい場合
+- `width: auto` を以前の宣言で上書きした文脈
+
+### `height: 100%` の誤用
+
+`height: 100%` は親高が確定していないと機能しません。ページ全体の高さを占めたい場合は、`height: 100%` ではなく論理ビューポート単位を使います。
+
+```css
+.full-page {
+  min-block-size: 100svb;
+}
+```
+
+親要素に確定高がある場合のみ `block-size: 100%` を使います。
+
+### 論理プロパティへ寄せる
+
+`width` / `height` はフロー方向と独立しているため、RTL / 縦書き / 論理軸のレイアウトと相性が悪くなります。flex / grid と組み合わせる場合は `inline-size` / `block-size` を優先してください。
+
+### `justify-items` / `justify-self` は flex で無効
+
+flex コンテナでは `justify-items` と `justify-self` は効きません。主軸は `justify-content`、交差軸は `align-items` / `align-self` を使います。grid コンテナのときだけ `justify-*` を選択できます。
+
+### `calc()` は型付きで書く
+
+`calc()` の式は、必ず型付きの項を含めます。意図しない単位のない演算を避け、意味の由来を式に残すためです。
+
+```css
+/* 推奨: 意味の由来を残す */
+margin: calc(20 / 16 * 1rem);
+
+/* 避ける: マジックナンバー */
+margin: 1.25rem;
+```
+
+係数が無次元の場合は、最後に `* 1rem` などで単位を付けて結果の型を確定させます。
+
+## Defensive layout
+
+外部要因（長文、欠損メディア、狭幅端末、CMS編集）で破綻しない設計を常備します。
+
+### flex / grid 子の潰れ防止
+
+flex / grid 子に長文やテキスト省略が入ると、最小内容幅が親を押し広げて横スクロールを発生させます。テキスト省略や `min-content` 絞り込みを意図する箇所では `min-width: 0` を必ず置きます。
+
+```css
+.row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+}
+
+.row__ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+```
+
+### メディア要素の溢れ防止
+
+`<img>` / `<svg>` / `<video>` / `<iframe>` / `<picture>` は本来の寸法で描画されて親を押し広げることがあります。flex 子や container 配下では `max-width: 100%` を既定化します。
+
+```css
+:where(img, svg, video, iframe, picture) {
+  max-width: 100%;
+  block-size: auto;
+}
+```
+
+### sticky / fixed のスタッキング
+
+`position: fixed` / `position: sticky` は祖先の stacking context に影響を受けます。`transform` / `filter` / `container-type: inline-size` のいずれかを持つ祖先の内側に fixed を置くと、意図しない位置に閉じ込められます。
+
+- `position: fixed` の親へ `transform` / `container-type` を迂闊に付けない
+- sticky は祖先の `overflow: hidden` / `overflow: clip` で効かなくなる点に注意
+
+### テーブルの横スクロール
+
+コンテナ幅を超えるデータテーブルは、スクロール可能なラッパーで包み、操作可能な境界として扱います。
+
+```html
+<div class="table-scroll" role="region" aria-label="売上比較表">
+  <table>...</table>
+</div>
+```
+
+```css
+.table-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+```
+
+閉じ込めた上で、視覚的にスクロール可能であることが分かる影やグラデーションを添えます。
+
+## 参考実装（Before / After）
+
+### Before
+
+```css
+@media (min-width: 768px) {
+  .card-list {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+```
+
+### After
+
+```css
+:scope { container: --cards / inline-size; }
+
+@container --cards (inline-size >= calc(420 / 16 * 1rem)) {
+  .card-list { grid-template-columns: 1fr 1fr; }
+}
+```
+
+## 規約サマリ（この章で持ち帰るルール）
+
+- 昇格順を固定する: `Static -> Intrinsic -> Container -> Media`
+- `container-name` は必須、かつ `--` 付き
+- container query は `inline-size` 条件を使う
+- `vw` / `vh` は禁止、論理ビューポート単位を使う
+- 閾値は `calc()` で由来を残す
+
+## 理解チェック
+
+1. 同じカードが本文とサイドバーで崩れる。最初に使うべき query は何か。  
+2. `@media (min-width: 768px)` を採用したとき、将来どんな保守コストが発生するか。  
+3. `@container` 条件で `var()` を避ける理由を説明できるか。  
+
+## 次に読む章
+
+- 流動値と文字組の設計へ進む: [Typography](/references/typography/)
+- 実機QAと出荷基準を確認する: [Accessibility](/references/accessibility/)
+- 命名契約とレイアウト責務の整理: [Terminology](/references/terminology/)

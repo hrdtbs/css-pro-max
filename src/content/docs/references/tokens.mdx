@@ -1,0 +1,120 @@
+---
+title: Tokens
+description: CSS custom propertiesを仕様化し、命名・配布・利用契約を壊れない形で運用する。
+---
+
+
+## シナリオ
+
+同じ意味の値が、ファイルごとに別名で増えていく。  
+結果としてトークンを使っているのに統一感が出ず、レビューで「この値はどの系？」が毎回発生する。  
+この章では、tokenを「値の置き場」ではなく「API契約」として運用する基準を定めます。
+
+## まず結論: 命名文法を固定する
+
+```text
+--{family}-{role}-{step}
+```
+
+例:
+
+- `--color-text-muted`
+- `--size-fluid-3`
+- `--shadow-2`
+- `--ease-out-3`
+
+## なぜ壊れるのか
+
+- family と role が混ざり、名前から責務が読めない
+- コンポーネント固有トークンがグローバルに漏れる
+- alias が多段化し、最終値の追跡が困難になる
+
+## 失敗コードを観察する
+
+```css
+:root {
+  --blue: #3478f6;
+  --button-blue: #3478f6;
+  --card-shadow-strong-final: 0 6px 20px rgb(0 0 0 / 0.2);
+}
+
+.button {
+  color: var(--blue);
+}
+```
+
+問題:
+
+- `--blue` は意味が曖昧
+- `--button-blue` がグローバル汚染になる
+- 命名規則がなく、スケールが増えるほど破綻する
+
+## 段階的に改善する
+
+### Step 1: familyを定義する
+
+- color
+- size / space
+- radius / border
+- shadow
+- ease / duration / animation
+- z-index
+
+### Step 2: semantic tokenを先に置く
+
+```css
+:root {
+  --color-text-default: oklch(32% 0.01 260);
+  --color-text-muted: oklch(46% 0.01 260);
+  --size-fluid-3: clamp(0.875rem, 0.8rem + 0.4svi, 1rem);
+  --shadow-2:
+    0 1px 2px rgb(0 0 0 / 0.05),
+    0 4px 8px rgb(0 0 0 / 0.08);
+}
+```
+
+### Step 3: component側はaliasで受ける
+
+```css
+.card {
+  --card-padding: var(--size-fluid-3);
+  --card-shadow: var(--shadow-2);
+  padding: var(--card-padding);
+  box-shadow: var(--card-shadow);
+}
+```
+
+aliasは `component -> global token` の1段で止めます。
+
+## motion token の最小セット
+
+```css
+:root {
+  --ease-in-3: cubic-bezier(0.32, 0, 0.67, 0);
+  --ease-out-3: cubic-bezier(0.33, 1, 0.68, 1);
+  --duration-quick-1: 120ms;
+  --duration-standard: 200ms;
+}
+```
+
+`animations` / `keyframes` 章で使う時間・イージングはここで先に揃えておくと、後段の調整が速くなります。
+
+## 規約サマリ（この章で持ち帰るルール）
+
+- 命名文法 `family-role-step` を固定する
+- semantic token を優先し、色名直書きトークンを避ける
+- componentトークンはグローバルへ漏らさない
+- aliasは1段で止め、多段参照を作らない
+- familyごとのスケールを崩さない
+
+## 理解チェック
+
+1. `--blue` と `--color-text-default` の違いは、運用で何に効くか。  
+2. なぜ component固有トークンを `:root` に置くべきでないのか。  
+3. alias多段化が発生したとき、レビューで何が遅くなるか。  
+
+## 次に読む章
+
+- カラー階層の実装へ接続: [Color](/references/color/)
+- motion契約の利用先を確認: [Animations](/references/animations/)
+- keyframes命名との整合を確認: [Keyframes](/references/keyframes/)

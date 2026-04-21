@@ -1,0 +1,228 @@
+---
+title: Keyframes Architecture Patterns
+description: 上級実装者向けに、@keyframesの命名・責務分離・合成設計・scroll連動運用をシナリオで再構成。
+---
+
+
+この章は「見た目が動く」段階から、「運用負債を増やさないモーション設計」へ移行するための教材です。  
+対象は、デザインシステム内で `@keyframes` を共通資産として管理する実装者を想定します。
+
+## シナリオ
+
+あなたは複数プロダクト共通のモーション基盤を保守しています。  
+直近のリリースで、`dialog`・`tooltip`・`toast`・`card reveal` が同時改修され、次の問題が発生しました。
+
+- 同名に近い `@keyframes` が乱立し、差分理由が追えない
+- globalとlocalの境界が曖昧で、局所最適の定義が再利用される
+- 複合アニメーションを1定義へ詰め込み、変更時に副作用が拡散する
+- scroll連動で初期フレームが不安定になり、初回描画でちらつく
+
+この章では、これらを再発させないための保持規約と改善順序を固定します。
+
+## 背景
+
+`@keyframes` は書いた瞬間ではなく、再利用された瞬間に品質差が出ます。  
+重要なのは「どれだけ凝ったモーションか」ではなく、「命名と責務の境界を保ったまま拡張できるか」です。
+
+設計崩壊の典型は次の3つです。
+
+1. 命名規約の崩壊で探索不能になる
+2. スコープ管理の崩壊で責務が混線する
+3. キーフレーム責務の崩壊で差し替え不能になる
+
+## 保持規約（固定する6項目）
+
+1. **`--` 始まり命名**: すべての `@keyframes` を dashed ident の `--` 接頭辞で統一する  
+2. **global/local分離**: globalは汎用運動、localはコンポーネント固有演出に限定する  
+3. **単一責務keyframes**: globalでは「1 keyframes = 1 property系統」を原則にする  
+4. **合成パターン**: 複合演出は `animation-name` の並列指定で組み立てる  
+5. **from/to中心**: globalは原則 `from` / `to` の2フレームで運用し、意味を明確化する  
+6. **scroll連動の基本**: 初期は `animation-play-state: paused` + `animation-fill-mode: both` を固定する
+
+## 失敗例
+
+### 失敗例1: 命名とスコープが混在する
+
+```css
+@keyframes fadeIn { /* --規約違反 */
+  from { opacity: 0; }
+}
+
+@keyframes --dialog-enter { /* localのつもりが他コンポーネントでも流用 */
+  from { opacity: 0; }
+}
+```
+
+問題:
+- ルールベース検索で回収しづらい
+- local資産の越境利用が起き、依存関係が隠れる
+
+### 失敗例2: 単一keyframesに責務を詰め込む
+
+```css
+@keyframes --popover-enter {
+  from {
+    opacity: 0;
+    transform: translateY(0.5rem) scale(0.96);
+    filter: blur(2px);
+  }
+}
+```
+
+問題:
+- property別に duration / easing を調整できない
+- 一部差し替え時に全演出の回帰テストが必要になる
+
+### 失敗例3: scroll連動で初期状態を固定しない
+
+```css
+.reveal {
+  animation-name: --fade-in;
+  animation-timeline: view();
+}
+```
+
+問題:
+- 初期フレームが環境差で不安定
+- ペイントタイミングで視覚ちらつきが発生しやすい
+
+## 段階改善
+
+### Step 1: 命名と配置を先に固定する
+
+- global: `--{animation-name}`（例: `--fade-in`, `--translate-from-y`）
+- local: `--{component-name}--{animation-name}`（例: `--dialog--overlay-enter`）
+- 配置:
+  - globalは `base/keyframes.css`
+  - localは各コンポーネントCSS
+- 判断に迷う場合は local で開始し、3回以上の再利用でglobal化する
+
+### Step 2: 単一責務 + 合成パターンへ分解する
+
+```css
+@keyframes --fade-in {
+  from { opacity: var(--fade-in--from-value, 0); }
+}
+
+@keyframes --scale-from {
+  from {
+    scale: var(--scale-from--x-value, 0.96) var(--scale-from--y-value, 0.96);
+  }
+}
+```
+
+```css
+.dropdown {
+  animation-name: --fade-in, --scale-from;
+  animation-duration: 140ms, 220ms;
+  animation-timing-function: var(--ease--out-quint), var(--ease--out-quint);
+  animation-fill-mode: both;
+}
+```
+
+この分解により、property単位で時間設計と縮退方針を切り替えられます。
+
+### Step 3: from/to中心で運用し、例外条件だけ局所化する
+
+- globalは原則 `from` のみ、必要時のみ `to` を明示
+- `25%` / `50%` など中間フレームが必要な場合は、まず localで閉じる
+- 中間フレームをglobal化する条件は「再利用頻度」ではなく「意味の普遍性」で判断する
+
+### Step 4: scroll連動の基本契約を固定する
+
+```css
+.reveal {
+  animation-name: --fade-in, --translate-from-y;
+  animation-duration: 1ms;
+  animation-fill-mode: both;
+  animation-play-state: paused;
+  animation-timeline: view();
+  animation-range: entry 0% cover 35%;
+}
+```
+
+- `paused + both` で初期フレームを安定化
+- 可視域の範囲は `animation-range` で定義し、JSトリガー依存を減らす
+- reduced-motionでは `--fade-in` 単独へ縮退する
+
+## Before / After（統合改善例）
+
+### Before
+
+```css
+@keyframes popin {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.95);
+  }
+  60% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.card {
+  animation: popin 280ms ease-out;
+}
+```
+
+### After
+
+```css
+@keyframes --fade-in {
+  from { opacity: var(--fade-in--from-value, 0); }
+}
+
+@keyframes --translate-from-y {
+  from { translate: 0 var(--translate-from-y--value, 0.625rem); }
+}
+
+@keyframes --scale-from {
+  from { scale: var(--scale-from--x-value, 0.95) var(--scale-from--y-value, 0.95); }
+}
+
+.card {
+  animation-name: --fade-in, --translate-from-y, --scale-from;
+  animation-duration: 140ms, 220ms, 220ms;
+  animation-timing-function: linear, var(--ease--out-quint), var(--ease--out-quint);
+  animation-fill-mode: both;
+}
+```
+
+改善点:
+- 命名を `--` 規約へ統一
+- 責務をopacity / translate / scaleへ分離
+- 合成により、要件変更時の差し替え範囲を最小化
+
+## レビュー観点
+
+- [ ] `@keyframes` 名が `--` 始まりで一貫しているか
+- [ ] global/localの境界が責務単位で維持されているか
+- [ ] global keyframes が単一責務を保っているか
+- [ ] 複合演出を `animation-name` 合成で表現しているか
+- [ ] globalが `from/to` 中心で管理されているか
+- [ ] scroll連動で `paused + both` を初期契約にしているか
+- [ ] reduced-motionで縮退経路が定義されているか
+
+## 規約サマリ
+
+- 命名は `--` 接頭辞を必須化し、探索性を維持する
+- スコープは global/local を混在させず、再利用境界を明示する
+- globalは単一責務 + from/to中心で変化点を最小化する
+- 複合演出は合成し、keyframes自体は小さく保つ
+- scroll連動は `paused + both` を基点に初期不安定を防止する
+
+## 理解チェック
+
+1. 「再利用頻度が高い」だけでlocal keyframesをglobal化すると危険な理由を説明してください。  
+2. 単一責務keyframesの分割が、レビュー工数と回帰リスクに与える影響を説明してください。  
+3. scroll連動で `animation-play-state: paused` を外すと、どのような不具合が起きやすいか述べてください。  
+4. `from/to` 中心の運用が、中間フレーム多用より保守しやすい理由を説明してください。
+
+## 次章導線
+
+- モーション導入判断とduration/easing設計: [Animations](/references/animations/)
+- 出荷時のA11y縮退設計: [Accessibility](/references/accessibility/)

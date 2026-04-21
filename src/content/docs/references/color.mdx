@@ -1,0 +1,126 @@
+---
+title: Color
+description: 色を感覚ではなく構造で扱い、階層・可読性・dark modeを一貫運用するための実装基準。
+---
+
+
+## シナリオ
+
+配色は綺麗なのに、画面が読みにくい。  
+調査すると、文字階層がサイズ依存で、色階層が場当たりになっている。  
+この章では、colorを装飾ではなく情報設計として扱うための手順を定義します。
+
+## まず結論: 色は階層で設計する
+
+1. パレット（shade体系）を先に決める
+2. 階層は `color + weight` で作る
+3. dark mode は反転ではなく再設計する
+
+## なぜ壊れるのか
+
+- hexを都度追加し、同系色スケールが存在しない
+- 階層をフォントサイズだけで作る
+- 色だけで状態を伝え、情報冗長性がない
+
+## 失敗コードを観察する
+
+```css
+.title {
+  color: #111;
+  font-size: 1.5rem;
+}
+
+.meta {
+  color: #999;
+  font-size: 0.95rem;
+}
+
+.warning {
+  color: #f00;
+}
+```
+
+問題:
+
+- `#999` が背景文脈によって可読性を失う
+- hierarchyをサイズ中心で作るため、拡大時に差分が崩れる
+- `warning` が色依存で、非視覚経路へ伝わらない
+
+## 段階的に改善する
+
+### Step 1: 色空間とshadeを決める
+
+```css
+:root {
+  --color-text-strong: oklch(22% 0.01 260);
+  --color-text-default: oklch(32% 0.01 260);
+  --color-text-muted: oklch(46% 0.01 260);
+  --color-surface-1: oklch(99% 0.005 260);
+  --color-brand-6: oklch(58% 0.19 264);
+}
+```
+
+`oklch()` を使うと、lightness変更時の知覚差分を揃えやすくなります。
+
+### Step 2: hierarchyを `color + weight` で定義する
+
+```css
+.text-primary {
+  color: var(--color-text-strong);
+  font-weight: 600;
+}
+
+.text-secondary {
+  color: var(--color-text-default);
+  font-weight: 500;
+}
+
+.text-tertiary {
+  color: var(--color-text-muted);
+  font-weight: 400;
+}
+```
+
+### Step 3: dark modeを再設計する
+
+```css
+:root {
+  --color-surface-1: oklch(99% 0.005 260);
+  --color-text-default: oklch(32% 0.01 260);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-surface-1: oklch(20% 0.01 260);
+    --color-text-default: oklch(92% 0.01 260);
+  }
+}
+```
+
+lightを単純反転せず、dark専用の階層を用意します。
+
+## colored背景の前景色ルール
+
+- 白背景で使う `muted` をそのまま色面に載せない
+- 背景と同系統のhueで前景色を再調整する
+- hover / active / disabled も含めて再確認する
+
+## 規約サマリ（この章で持ち帰るルール）
+
+- パレットは8〜10段のshadeで先に設計する
+- 階層は `size` だけでなく `color + weight` で作る
+- dark mode は別レイヤーとして再設計する
+- 色だけで状態を伝えない（文字/アイコン/形状を併用）
+- 生値ではなくトークンを経由して使用する
+
+## 理解チェック
+
+1. なぜ `#999` は文脈によって読めたり読めなかったりするのか。  
+2. hierarchyをサイズ中心で作ると、どの場面で破綻するか。  
+3. dark modeを反転で済ませると、どの要素が最初に破綻しやすいか。  
+
+## 次に読む章
+
+- トークン契約を先に整える: [Tokens](/references/tokens/)
+- コントラスト基準と非色依存設計へ接続: [Accessibility](/references/accessibility/)
+- 影と境界の仕上げへ接続: [Visual Details](/references/visual-details/)
