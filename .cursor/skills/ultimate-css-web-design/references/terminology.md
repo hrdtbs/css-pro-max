@@ -361,6 +361,10 @@ Both `Inner` and `Outer` belong to the component as children. Do not nest `Child
 
 - Calling normal-flow `margin` `Gap`.
 
+#### Note
+
+Numeric spacing steps, `gap` vs `margin`, and responsive gutter policy → [spacing.md](spacing.md).
+
 ### Columns
 
 #### Definition

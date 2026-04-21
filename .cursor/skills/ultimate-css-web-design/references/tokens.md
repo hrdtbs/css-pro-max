@@ -13,7 +13,7 @@ This reference defines naming, layering, and usage rules for design tokens imple
 ## Loading boundaries
 
 - **Load this reference first** when the issue is token naming, token scale design, or token usage contracts.
-- **Do not load this reference first** when the issue is keyframe choreography (open [keyframes.md](keyframes.md)) or typographic readability (open [typography.md](typography.md)).
+- **Do not load this reference first** when the issue is keyframe choreography (open [keyframes.md](keyframes.md)), typographic readability (open [typography.md](typography.md)), or whitespace rhythm and spacing-scale policy (open [spacing.md](spacing.md)).
 
 ## Core policy
 
@@ -58,7 +58,7 @@ Rules:
 
 - `--size-{000..15}` for fixed scale.
 - `--size-fluid-{1..10}` for fluid scale.
-- `--space-{1..10}` for rhythm spacing when separated from general size.
+- `--space-{1..13}` for rhythm spacing when separated from general size — **step values and usage** are defined in [spacing.md](spacing.md); this file defines naming and aliasing only.
 
 ### Radius and border
 
@@ -152,6 +152,7 @@ Do not tokenise random unique values that appear once without reuse intent.
 
 ## Related references
 
+- [spacing.md](spacing.md) — canonical spacing scale, `gap` vs `margin`, gutters, responsive steps.
 - [keyframes.md](keyframes.md) — animation naming and API-style custom-property integration.
 - [animations.md](animations.md) — duration/easing policies consumed by motion tokens.
 - [color.md](color.md) — palette strategy for color token design.

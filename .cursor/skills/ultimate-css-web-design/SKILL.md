@@ -1,11 +1,11 @@
 ---
 name: ultimate-css-web-design
-description: Comprehensive CSS and UI design guidance for responsive layout strategy, design-system terminology, animations/keyframes, typography (Japanese/English), visual polish, and accessibility baselines. Use this skill whenever the user asks about CSS architecture, layout behavior, component naming, motion decisions, readability tuning, interaction polish, or accessibility quality checks in web UI work, even if the request is abstract and not asking for CSS code directly.
+description: Comprehensive CSS and UI design guidance for responsive layout strategy, spacing rhythm, design-system terminology, animations/keyframes, typography (Japanese/English), visual polish, and accessibility baselines. Use this skill whenever the user asks about CSS architecture, layout behavior, component naming, motion decisions, readability tuning, interaction polish, or accessibility quality checks in web UI work, even if the request is abstract and not asking for CSS code directly.
 ---
 
 # Ultimate CSS Web Design
 
-This skill consolidates production-grade guidance for CSS and UI work on the modern web. It covers layout and responsive strategy, design-system terminology, motion, typography, visual-detail polish, accessibility baselines, foundation CSS architecture, token systems, color systems, and z-axis layering rules. The guidance is opinionated: when there is a preferred default, it is stated.
+This skill consolidates production-grade guidance for CSS and UI work on the modern web. It covers layout and responsive strategy, spacing and whitespace rhythm, design-system terminology, motion, typography, visual-detail polish, accessibility baselines, foundation CSS architecture, token systems, color systems, and z-axis layering rules. The guidance is opinionated: when there is a preferred default, it is stated.
 
 Each concept has exactly one canonical reference. Other references link to it rather than restating it — open the canonical file when you need to change or cite a rule.
 
@@ -14,6 +14,7 @@ Each concept has exactly one canonical reference. Other references link to it ra
 Apply this skill for any task that touches CSS, markup that implies CSS responsibilities, or the look-and-feel quality of a product:
 
 - Writing CSS for a component, page, or design system.
+- Choosing padding, gaps, section rhythm, gutters, or spacing scale steps.
 - Choosing a layout strategy: intrinsic sizing, flex, grid, container queries, media queries, or viewport units.
 - Naming components, tokens, or layers inside a design system.
 - Designing animations, transitions, scroll-linked motion, or `@keyframes`.
@@ -58,6 +59,7 @@ Decision rule: if the change affects how a feature looks, feels, moves, or is in
 | Designing reset policy, cascade layers, and low-specificity base | [foundation](references/foundation.md) |
 | Designing token naming, scales, and API-style custom-property contracts | [tokens](references/tokens.md) |
 | Building palette scales, text hierarchy color rules, and dark-mode color ladders | [color](references/color.md) |
+| Spacing scale, `gap` vs `margin`, grid vs flex for rhythm, gutters, responsive steps, negative margins | [spacing](references/spacing.md) |
 
 ## Loading directives (MANDATORY / Do NOT Load)
 
@@ -98,6 +100,11 @@ Use this section to avoid both under-loading and over-loading references.
 - **MANDATORY - READ** [color.md](references/color.md) when text hierarchy is unclear, palettes are ad hoc, or dark mode appears visually unstable.
 - **Do NOT Load** [typography.md](references/typography.md) first for palette-architecture issues; type rhythm does not replace color-system design.
 
+### Spacing symptoms
+
+- **MANDATORY - READ** [spacing.md](references/spacing.md) when section rhythm is inconsistent, magic-number `margin` spreads, `gap` vs `margin` choice is unclear, gutters ignore narrow viewports, or negative margins compensate for parent padding.
+- **Do NOT Load** [spacing.md](references/spacing.md) first when the issue is purely container-query threshold math with no whitespace policy change (open [responsive.md](references/responsive.md) first).
+
 ## Reference map
 
 | File | Responsibility | Canonical topics |
@@ -113,6 +120,7 @@ Use this section to avoid both under-loading and over-loading references.
 | [foundation.md](references/foundation.md) | Base CSS architecture | reset scope, `@layer` order, low-specificity `:where()`, third-party CSS layering, a11y-safe base |
 | [tokens.md](references/tokens.md) | Design-token contracts | naming grammar, family scales, global vs component aliasing, motion/depth token sets |
 | [color.md](references/color.md) | Color-system strategy | HSL/OKLCH usage, palette scales, hierarchy by color+weight, dark-mode ladders, non-color redundancy |
+| [spacing.md](references/spacing.md) | Whitespace rhythm | 8/4 base, scale steps, `gap` first, Grid for 2D rhythm, gutters vs gaps, responsive steps, negative-margin policy |
 
 ## Global pre-delivery checklist
 
@@ -206,6 +214,14 @@ Run this before shipping. Each group points at its canonical reference; open tha
 - [ ] Colored backgrounds use context-aware foreground choices.
 - [ ] Dark mode uses dedicated ladders; color is not the sole communication channel.
 
+### Spacing → [spacing.md](references/spacing.md)
+
+- [ ] Rhythm uses the canonical scale; 8-based layout, 4 only for micro internals.
+- [ ] Narrow and wide viewports use appropriate gutter/step choices, not one fixed literal everywhere.
+- [ ] Sibling/cell spacing uses `gap` on Flex/Grid where possible; Grid for 2D rhythm, Flex for single-axis stacks.
+- [ ] `Gutter` and `Gap` are not conflated ([terminology.md](references/terminology.md)).
+- [ ] No habitual negative margins to undo parent padding; full-bleed uses layout structure.
+
 ## Anti-patterns with why
 
 - **NEVER** jump straight to media queries for component-level breakage, **because** it locks components to viewport assumptions and increases regression risk when placement changes.
@@ -213,6 +229,8 @@ Run this before shipping. Each group points at its canonical reference; open tha
 - **NEVER** name by appearance (`PrimaryButtonLikeLink`), **because** semantics drift and the same component becomes unmaintainable across contexts.
 - **NEVER** ship decorative high-frequency motion by default, **because** repeated exposure adds interaction friction and raises reduced-motion accessibility risk.
 - **NEVER** treat typography as visual garnish, **because** readability defects cannot be compensated later by spacing, color, or motion polish.
+- **NEVER** use chained child `margin` for rhythmic lists when a Flex/Grid parent could own `gap`, **because** collapsing, wrapping, and last-item hacks multiply.
+- **NEVER** use negative margins routinely to cancel parent `padding`, **because** structure becomes opaque and `overflow` clipping breaks layouts silently.
 
 ## Fallback mini-playbook
 
