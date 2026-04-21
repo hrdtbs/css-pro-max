@@ -30,7 +30,7 @@ Adjacent concerns live in their own references:
 - Spacing encodes **relationship, hierarchy, and density** — not “empty decoration”.
 - One **global discrete scale** applies to padding, gaps, and margins that participate in rhythm; literals outside the scale need a documented reason.
 - **Primary rhythm** uses multiples of **8** (in `rem`); **4**-step increments are reserved for **micro** spacing inside dense components (icon gaps, tight controls).
-- **Sibling and cell rhythm** is expressed with **`gap`** on a Flex or Grid parent whenever possible — not with chained child `margin`.
+- **Sibling and cell rhythm** is expressed with `gap` on a Flex or Grid parent whenever possible — not with chained child `margin`.
 - **Negative margins** are not a default tool; they are allowed only for rare, intentional overlap with explicit justification.
 - **Viewport width** changes which **step** or **gutter token** is appropriate; the scale table itself stays stable.
 
@@ -41,27 +41,29 @@ Adjacent concerns live in their own references:
 
 ## Spacing scale (canonical steps)
 
-Use these steps for padding, `gap`, and rhythmic margins. Map them to tokens per [tokens.md](tokens.md) (`--space-{n}`). Px values assume a **16px** root; prefer **`rem`** in CSS so spacing tracks user font settings.
+Use these steps for padding, `gap`, and rhythmic margins. Map them to tokens per [tokens.md](tokens.md) (`--space-{n}`). Px values assume a **16px** root; prefer `rem` in CSS so spacing tracks user font settings.
 
-| Step | `rem` | px (16px root) | Typical use |
-| --- | --- | --- | --- |
-| 1 | 0.125 | 2 | Hairline separation, rare |
-| 2 | 0.25 | 4 | Micro (icon inset, tight chip) |
-| 3 | 0.5 | 8 | Small gap, dense stacks |
-| 4 | 0.75 | 12 | Compact card padding, form clusters |
-| 5 | 1 | 16 | **Default** inset/gap for most UI |
-| 6 | 1.5 | 24 | Section padding, relaxed stacks |
-| 7 | 2 | 32 | Section separation, hero inset |
-| 8 | 2.5 | 40 | Large sections (aligns with min hit area thinking) |
-| 9 | 3 | 48 | Major vertical rhythm breaks |
-| 10 | 4 | 64 | Page-level bands |
-| 11 | 5 | 80 | Wide layouts, marketing sections |
-| 12 | 6 | 96 | Maximum common macro spacing |
-| 13 | 10 | 160 | Rare hero / editorial span |
+
+| Step | `rem` | px (16px root) | Typical use                                        |
+| ---- | ----- | -------------- | -------------------------------------------------- |
+| 1    | 0.125 | 2              | Hairline separation, rare                          |
+| 2    | 0.25  | 4              | Micro (icon inset, tight chip)                     |
+| 3    | 0.5   | 8              | Small gap, dense stacks                            |
+| 4    | 0.75  | 12             | Compact card padding, form clusters                |
+| 5    | 1     | 16             | **Default** inset/gap for most UI                  |
+| 6    | 1.5   | 24             | Section padding, relaxed stacks                    |
+| 7    | 2     | 32             | Section separation, hero inset                     |
+| 8    | 2.5   | 40             | Large sections (aligns with min hit area thinking) |
+| 9    | 3     | 48             | Major vertical rhythm breaks                       |
+| 10   | 4     | 64             | Page-level bands                                   |
+| 11   | 5     | 80             | Wide layouts, marketing sections                   |
+| 12   | 6     | 96             | Maximum common macro spacing                       |
+| 13   | 10    | 160            | Rare hero / editorial span                         |
+
 
 **Rules**
 
-- **Padding** and **`gap`** on the same surface should usually pick from the same step or adjacent steps — not arbitrary off-scale values.
+- **Padding** and `gap` on the same surface should usually pick from the same step or adjacent steps — not arbitrary off-scale values.
 - **Gutter** (edge padding) uses the same steps; at page level, switch **which step or token** applies per breakpoint rather than inventing one-off pixels.
 
 ### Optional tighter profile
@@ -72,12 +74,14 @@ Teams that need a stricter 4-based micro grid may use steps **2–4** more often
 
 Do not redefine terms; use [terminology.md](terminology.md).
 
-| Intent | CSS / pattern | Terminology |
-| --- | --- | --- |
-| Inset from own border | `padding`, logical `padding-inline` / `padding-block` | `Box` context; not `Gutter` |
-| Space between children | `gap`, `row-gap`, `column-gap` on Flex/Grid | `Gap` |
-| Inline-axis inset from viewport | Outer wrapper `padding-inline` on `Inner` / shell | `Gutter` |
-| Vertical sibling rhythm | Parent Flex/Grid + `gap`, or stack composition | `Stack` / composition |
+
+| Intent                          | CSS / pattern                                         | Terminology                 |
+| ------------------------------- | ----------------------------------------------------- | --------------------------- |
+| Inset from own border           | `padding`, logical `padding-inline` / `padding-block` | `Box` context; not `Gutter` |
+| Space between children          | `gap`, `row-gap`, `column-gap` on Flex/Grid           | `Gap`                       |
+| Inline-axis inset from viewport | Outer wrapper `padding-inline` on `Inner` / shell     | `Gutter`                    |
+| Vertical sibling rhythm         | Parent Flex/Grid + `gap`, or stack composition        | `Stack` / composition       |
+
 
 ## Implementation: prefer `gap`, prefer Flex/Grid
 
@@ -109,7 +113,7 @@ Do not redefine terms; use [terminology.md](terminology.md).
 ### Logical properties and `rem`
 
 - Prefer **logical** properties (`padding-inline`, `margin-block`, `gap`) for multi-writing-mode safety; pair with [responsive.md](responsive.md) for direction-agnostic layout.
-- Use **`rem`** for spacing tied to readability and user zoom (see [typography.md](typography.md)).
+- Use `rem` for spacing tied to readability and user zoom (see [typography.md](typography.md)).
 
 ### Coordination with responsive layout
 
@@ -131,8 +135,8 @@ Do not redefine terms; use [terminology.md](terminology.md).
 ### Why avoid habitual use
 
 - **Margin collapsing** with negative values is harder to reason about and review.
-- Ancestors with **`overflow: hidden`** may clip content pulled “back” with negative margins.
-- Undoing parent **`padding`** with negative margins hides layout problems instead of fixing hierarchy (wrapper split, grid column span, explicit full-bleed track).
+- Ancestors with `overflow: hidden` may clip content pulled “back” with negative margins.
+- Undoing parent `padding` with negative margins hides layout problems instead of fixing hierarchy (wrapper split, grid column span, explicit full-bleed track).
 
 ### Preferred alternatives
 
@@ -150,28 +154,28 @@ Minimum touch targets and expanding hit areas are defined in [accessibility.md](
 
 ## Anti-patterns
 
-- **NEVER** build rhythmic sibling spacing only with child **`margin-top`** / **`margin-inline`** chains, **because** it fights collapsing, wrapping, and parent-owned composition — use **`gap`** on Flex/Grid.
-- **NEVER** use **negative margins** to cancel parent **`padding`** as a routine pattern, **because** it obscures structure and breaks under `overflow` changes.
-- **NEVER** conflate **`Gutter`** with **`Gap`**, **because** edge protection and inter-item rhythm are different responsibilities ([terminology.md](terminology.md)).
+- **NEVER** build rhythmic sibling spacing only with child `margin-top` / `margin-inline` chains, **because** it fights collapsing, wrapping, and parent-owned composition — use `gap` on Flex/Grid.
+- **NEVER** use **negative margins** to cancel parent `padding` as a routine pattern, **because** it obscures structure and breaks under `overflow` changes.
+- **NEVER** conflate **Gutter** with **Gap**, **because** edge protection and inter-item rhythm are different responsibilities ([terminology.md](terminology.md)).
 - **NEVER** sprinkle **off-scale pixel** spacing without token or rationale, **because** rhythm drifts and themes cannot remap values.
-- **NEVER** force **Grid** for a trivial single-column stack, **because** Flex + **`gap`** is simpler — use Grid when **2D** rhythm or column templates matter.
+- **NEVER** force **Grid** for a trivial single-column stack, **because** Flex + `gap` is simpler — use Grid when **2D** rhythm or column templates matter.
 - **NEVER** keep **identical** page gutters on all breakpoints when narrow layouts feel cramped, **because** viewport-appropriate **step** changes are part of good rhythm.
 
 ## Checklist
 
-- [ ] Padding and gaps use the **canonical scale** (or documented exception).
-- [ ] **8-based** rhythm for layout; **4** only for **micro** internals.
-- [ ] Sibling/cell spacing uses **`gap`** on Flex/Grid where possible.
-- [ ] **Grid** used for **2D** layouts; **Flex** for single-axis stacks.
-- [ ] **Logical** spacing properties preferred; **`rem`** for user-scaling alignment.
-- [ ] **Gutter** vs **Gap** respected per [terminology.md](terminology.md).
-- [ ] **Breakpoint** changes adjust **step or gutter token**, not one-off literals only.
-- [ ] No habitual **negative margins**; full-bleed solved with **structure**.
-- [ ] Hit areas meet [accessibility.md](accessibility.md) after spacing choices.
+- Padding and gaps use the **canonical scale** (or documented exception).
+- **8-based** rhythm for layout; **4** only for **micro** internals.
+- Sibling/cell spacing uses `gap` on Flex/Grid where possible.
+- **Grid** used for **2D** layouts; **Flex** for single-axis stacks.
+- **Logical** spacing properties preferred; `rem` for user-scaling alignment.
+- **Gutter** vs **Gap** respected per [terminology.md](terminology.md).
+- **Breakpoint** changes adjust **step or gutter token**, not one-off literals only.
+- No habitual **negative margins**; full-bleed solved with **structure**.
+- Hit areas meet [accessibility.md](accessibility.md) after spacing choices.
 
 ## Related references
 
-- [tokens.md](tokens.md) — `--space-*` naming and aliases.
+- [tokens.md](tokens.md) — `--space-`* naming and aliases.
 - [terminology.md](terminology.md) — `Gutter`, `Gap`, `Stack`, composition.
 - [responsive.md](responsive.md) — intrinsic layout, container queries, breakpoints.
 - [typography.md](typography.md) — measure, `rem`, type-adjacent spacing.

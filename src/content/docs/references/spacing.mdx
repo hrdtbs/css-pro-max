@@ -1,0 +1,148 @@
+---
+title: Spacing
+description: 余白をリズム・階層・密度として設計し、gap優先・Grid/Flex選択・レスポンシブ段・ネガティブマージン方針まで一貫させる。
+---
+
+## シナリオ
+
+セクション間の余白が画面ごとにバラバラ、`margin-top` だけで縦リズムを作っていて `:last-child` 対応が増殖、親の `padding` を打ち消すためにネガティブマージンが常態化している——こうした状態は、デザイントークンを導入していても「間隔の設計言語」が無いとすぐに戻ります。  
+この章では、**1本の離散スケール**、**親が持つ `gap`**、**Gutter と Gap の分離**、**ビューポートに応じた段の切り替え**を、実装とレビューで再現できる形に固定します。
+
+Agent Skill の canonical 参照（英語）は `.cursor/skills/ultimate-css-web-design/references/spacing.md` にあり、本ページは同じ判断基準を**学習導線**向けに再構成したものです。
+
+## まず結論: 余白は「空き」ではなく関係の設計
+
+- **主リズムは 8 の倍数**（`rem` で表現）。**4** はコンポーネント内部の**マイクロ**に限定する。
+- **兄弟・セル間**は可能な限り **`margin` ではなく `gap`**。そのために並べ領域は **Flex または Grid** にする。
+- **行と列の両方にリズムが要る**カード格子・ダッシュボードなどは **Grid を優先**。単一方向の積み上げは **Flex + `gap`** で足りる。
+- **刻み表は1本固定**。狭い画面と広い画面では **別の「段」や Gutter トークン**を選ぶ（表そのものを場当たりで増やさない）。
+- **ネガティブマージンはデフォルト禁止**。フルブリードは **Grid の列跨ぎ**やラッパー再設計で表現する。
+
+語彙（**Gutter** / **Gap** / **Stack**）の定義は [Terminology](/references/terminology/) に従い、この章では**数値とCSSの責務**にフォーカクスします。
+
+## なぜ壊れるのか
+
+- 間隔が「見た目調整」扱いになり、**スケール外の px** が増える
+- 子要素だけに `margin` を振ると **相殺・最終行・折り返し**で例外処理が増える
+- **Gutter**（画面端の保護）と **Gap**（子どうしの間）が混線し、同じ `padding` に全部詰め込む
+- ブレークポイントをまたいでも **同じ Gutter 段**のままになり、狭い幅だけ窮屈になる
+- 親の `padding` を **ネガティブマージンで打ち消す**と、構造が読めず `overflow: hidden` でクリップしやすい
+
+## 失敗コードを観察する
+
+```html
+<div class="section">
+  <div class="card">A</div>
+  <div class="card">B</div>
+  <div class="card">C</div>
+</div>
+```
+
+```css
+.section {
+  padding-inline: 16px;
+}
+
+.card {
+  margin-top: 16px;
+}
+
+.card:first-child {
+  margin-top: 0;
+}
+```
+
+問題:
+
+- 縦リズムが **子の `margin-top` 連打**に依存している
+- 親が **間隔の責務**を持っていない（[Terminology](/references/terminology/) の composition と齟齬）
+- 折り返しグリッドに置き換えると **横方向の `gap`** が無く、再び場当たり調整が必要になる
+
+## 段階的に改善する
+
+### Step 1: 親を Flex にして `gap` に集約する
+
+```css
+.section {
+  padding-inline: 1rem; /* Gutter: 段はスケールから */
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.card {
+  margin-top: 0;
+}
+```
+
+### Step 2: 2次元リズムが必要なら Grid へ
+
+```css
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
+  gap: 1rem 1.5rem; /* row column — いずれもスケール段から */
+}
+```
+
+### Step 3: トークンは `--space-{1..13}` にマップする
+
+命名・alias の文法は [Tokens](/references/tokens/) 、**各段の rem/px と用途**はこの章の表と Skill 原典で固定します。
+
+### Step 4: ページ級では「段」を切り替える
+
+狭いビューポートでは Gutter を段 **5**、広い場合は **6** や **7** に上げるなど、**同じスケールの別ステップ**を選ぶ。閾値やコンテナクエリの考え方は [Responsive](/references/responsive/) 。
+
+## 採用スケール（13段）
+
+| Step | rem | px (16px 相当) | 用途の目安 |
+| --- | --- | --- | --- |
+| 1 | 0.125 | 2 | 極小、滅多に使わない |
+| 2 | 0.25 | 4 | マイクロ（アイコンまわり） |
+| 3 | 0.5 | 8 | 小さい `gap`、高密度 |
+| 4 | 0.75 | 12 | コンパクトなカード内 |
+| 5 | 1 | 16 | **既定**の inset / gap |
+| 6 | 1.5 | 24 | セクションパディング |
+| 7 | 2 | 32 | セクション間 |
+| 8 | 2.5 | 40 | 大きめの区切り |
+| 9 | 3 | 48 | 大きな縦リズム |
+| 10 | 4 | 64 | ページ級バンド |
+| 11 | 5 | 80 | ワイドレイアウト |
+| 12 | 6 | 96 | マクロの上限に近い |
+| 13 | 10 | 160 | ヒーロー等、稀 |
+
+## 空間の意図と用語（再掲）
+
+| 意図 | CSSの主な表現 | 用語（Terminology） |
+| --- | --- | --- |
+| 要素の内側 | `padding` / 論理プロパティ | `Box` の文脈（Gutter ではない） |
+| 子どうしの間隔 | 親の `gap` | **Gap** |
+| 画面端の保護 | シェル・`Inner` の `padding-inline` | **Gutter** |
+
+## ネガティブマージン
+
+CSS 上は負の `margin` も有効だが、**親 padding の打ち消し**や **レイアウト欠陥の隠蔽**に使うと相殺・クリップ・保守性の問題が増える。**意図的なオーバーラップ**など例外的用途に限り、理由をコードやドキュメントに残す。
+
+## 規約サマリ（この章で持ち帰るルール）
+
+- 8 基調のレイアウトリズム、4 はマイクロのみ
+- 13 段スケールから選ぶ。外れ値は理由付きで
+- 兄弟間は `gap`、単軸は Flex、2次元は Grid
+- Gutter と Gap を混同しない
+- ビューポート帯で段または Gutter トークンを切り替える
+- ネガティブマージンを常習にしない
+
+## 理解チェック
+
+1. なぜ `margin-top` チェーンより親の `gap` がレビューしやすいですか。  
+2. 1列の縦並びだけのリストに Grid を選ぶべきではない理由は。  
+3. 狭い画面で Gutter が窮屈なとき、スケール表を増やさずに何を変えますか。  
+4. **Gutter** と **Gap** を入れ替えて呼ぶと、どんな実装バグが起きやすいですか。  
+
+## 次に読む章
+
+- トークン命名と `--space-*` の境界: [Tokens](/references/tokens/)
+- 語彙の固定（Gutter / Gap）: [Terminology](/references/terminology/)
+- ブレークポイントとコンテナクエリ: [Responsive](/references/responsive/)
+- `rem` と可読性: [Typography](/references/typography/)
+- タッチターゲットと余白: [Accessibility](/references/accessibility/)

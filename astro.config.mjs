@@ -23,6 +23,7 @@ export default defineConfig({
 						{ label: 'Foundation', slug: 'references/foundation' },
 						{ label: 'Responsive', slug: 'references/responsive' },
 						{ label: 'Tokens', slug: 'references/tokens' },
+						{ label: 'Spacing', slug: 'references/spacing' },
 						{ label: 'Color', slug: 'references/color' },
 						{ label: 'Z-Index', slug: 'references/z-index' },
 						{ label: 'Typography', slug: 'references/typography' },
