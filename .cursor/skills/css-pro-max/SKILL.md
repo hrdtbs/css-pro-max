@@ -1,9 +1,9 @@
 ---
-name: ultimate-css-web-design
+name: css-pro-max
 description: Comprehensive CSS and UI design guidance for responsive layout strategy, spacing rhythm, design-system terminology, animations/keyframes, typography (Japanese/English), visual polish, and accessibility baselines. Use this skill whenever the user asks about CSS architecture, layout behavior, component naming, motion decisions, readability tuning, interaction polish, or accessibility quality checks in web UI work, even if the request is abstract and not asking for CSS code directly.
 ---
 
-# Ultimate CSS Web Design
+# CSS Pro Max
 
 This skill consolidates production-grade guidance for CSS and UI work on the modern web. It covers layout and responsive strategy, spacing and whitespace rhythm, design-system terminology, motion, typography, visual-detail polish, accessibility baselines, foundation CSS architecture, token systems, color systems, and z-axis layering rules. The guidance is opinionated: when there is a preferred default, it is stated.
 

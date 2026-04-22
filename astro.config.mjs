@@ -7,7 +7,7 @@ export default defineConfig({
 	site: 'https://example.com',
 	integrations: [
 		starlight({
-			title: 'Ultimate CSS Web Design',
+			title: 'CSS Pro Max',
 			description: '上級者向け CSS / Web Design 教本。原典を再編し、実務補足と参考実装を強化。',
 			sidebar: [
 				{

@@ -1,13 +1,13 @@
-# Ultimate CSS Web Design
+# CSS Pro Max
 
 CSS / レイアウト / タイポグラフィ / アニメーション / アクセシビリティの実務基準をまとめたドキュメントです。Starlight で公開しているほか、Agent Skills としても配布しています。
 
 ## Agent Skills として導入する
 
-本リポジトリの `.cursor/skills/ultimate-css-web-design/` を Agent Skills としてインストールできます。
+本リポジトリの `.cursor/skills/css-pro-max/` を Agent Skills としてインストールできます。
 
 ```bash
-npx skills add https://github.com/hrdtbs/web-design-system --skill ultimate-css-web-design
+npx skills add https://github.com/hrdtbs/css-pro-max --skill css-pro-max
 ```
 
 ## Docs
