@@ -1,59 +1,40 @@
 # CSS Pro Max
 
-CSS / レイアウト / タイポグラフィ / アニメーション / アクセシビリティの実務基準をまとめたドキュメントです。Starlight で公開しているほか、Agent Skills としても配布しています。
+上級者向けの **CSS / レイアウト / タイポグラフィ / アニメーション / アクセシビリティの実務基準**を、日本語ドキュメントサイト（学習導線）と Agent Skill（AI 向け英語正典）の 2 経路で配布しています。
 
-## Agent Skills として導入する
+- Docs: https://css-pro-max.h2cos.workers.dev
+- Agent Skill 正典: [.cursor/skills/css-pro-max/SKILL.md](.cursor/skills/css-pro-max/SKILL.md)
 
-本リポジトリの `.cursor/skills/css-pro-max/` を Agent Skills としてインストールできます。
+## 想定読者
+
+- 実装とレビューの両方を担うフロントエンド上級者
+- デザインシステムを運用・改善している職能
+- PR で「根拠付きの指摘」を返す必要がある人
+
+## 収録トピック（全 12 章）
+
+- **設計基盤**: Terminology / Foundation / Responsive / Tokens / Spacing / Color / Z-Index / Typography / Accessibility
+- **モーションと表現**: Animations / Keyframes / Visual Details
+
+各章の詳細と学習順はドキュメントサイト（https://css-pro-max.h2cos.workers.dev）を参照。
+
+## 二つの配布形式
+
+| 形式 | 目的 | 入口 |
+| --- | --- | --- |
+| Docs サイト（日本語） | 学習導線。シナリオ → 失敗コード → 段階的改善 → 規約サマリの順で判断力に落とす | https://css-pro-max.h2cos.workers.dev |
+| Agent Skill（英語） | AI エージェントに同じ判断基準を持たせる。各概念の唯一の正典 | `.cursor/skills/css-pro-max/` |
+
+同一ルールを二つのフォーマットで提供しています。**正典は Skill 側 (`.cursor/skills/css-pro-max/references/*.md`)** で、docs サイトは同じ判断基準を学習向けに再構成したものです。ルール変更時は Skill 側を先に更新してください。
+
+## Agent Skill として導入する
 
 ```bash
 npx skills add https://github.com/hrdtbs/css-pro-max --skill css-pro-max
 ```
 
-## Docs
+導入後、CSS / レイアウト / タイポグラフィ / アニメーション / A11y に関わる作業でこの Skill が自動適用されます。
 
-ドキュメントサイトは Astro + Starlight で構築しています。
+## コントリビュート
 
-[Built with Starlight](https://starlight.astro.build)
-
-## 🚀 Project Structure
-
-Inside of your Astro + Starlight project, you'll see the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   └── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
-```
-
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
-
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
-
-Static assets, like favicons, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-
-| Command                   | Action                                           |
-| ------------------------- | ------------------------------------------------ |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-
-## 👀 Want to learn more?
-
-Check out [Starlight’s docs](https://starlight.astro.build/), read [the Astro documentation](https://docs.astro.build), or jump into the [Astro Discord server](https://astro.build/chat).
+ルール変更は正典 (`.cursor/skills/css-pro-max/references/<topic>.md`) を先に更新し、対応する docs ページ (`src/content/docs/references/<topic>.mdx`) を同一 PR で反映させてください。学習導線側だけを更新すると、Skill 利用時の判断基準と乖離します。

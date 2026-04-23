@@ -33,17 +33,22 @@ npx skills add https://github.com/hrdtbs/css-pro-max --skill css-pro-max
 
 ## リファレンス一覧
 
-- [Responsive](/references/responsive/) — 場当たりのブレークポイント運用を卒業し、再現可能な判断手順でResponsiveを設計する。
+### 設計基盤
+
 - [Terminology](/references/terminology/) — 責務・意味・境界を固定し、レビュー精度を上げるための語彙契約と判断基準。
 - [Foundation](/references/foundation/) — resetとcascade layerの責務を固定し、上書き不能なCSS崩壊を予防する設計基盤。
+- [Responsive](/references/responsive/) — 場当たりのブレークポイント運用を卒業し、再現可能な判断手順でResponsiveを設計する。
 - [Tokens](/references/tokens/) — CSS custom propertiesを仕様化し、命名・配布・利用契約を壊れない形で運用する。
 - [Spacing](/references/spacing/) — 余白の離散スケール、`gap` 優先、Grid/Flex 選択、レスポンシブ段、ネガティブマージン方針。
 - [Color](/references/color/) — 色を感覚ではなく構造で扱い、階層・可読性・dark modeを一貫運用するための実装基準。
 - [Z-Index](/references/z-index/) — 重なり順の場当たり運用を止め、absolute/relative分離で破綻しないレイヤー設計へ移行する。
 - [Typography](/references/typography/) — 可読性、日英混在、数値UI、流動タイプ設計を含む上級者向けタイポグラフィ基準。
+- [Accessibility](/references/accessibility/) — 出荷前に必須となるA11y基準を、実装パターン・監査観点・運用ルールまで含めて整理。
+
+### モーションと表現
+
 - [Animations](/references/animations/) — 実務事故から逆算して、モーション設計を判断順序・実装規約・監査観点まで統合する上級者向けガイド。
 - [Keyframes](/references/keyframes/) — `@keyframes`の命名・責務分離・合成設計・scroll連動運用をシナリオで再構成。
-- [Accessibility](/references/accessibility/) — 出荷前に必須となるA11y基準を、実装パターン・監査観点・運用ルールまで含めて整理。
 - [Visual Details](/references/visual-details/) — 仕上がり品質を決める視覚ディテール原則と実装チェック。
 
 ## 典型シナリオから探す
@@ -61,7 +66,7 @@ npx skills add https://github.com/hrdtbs/css-pro-max --skill css-pro-max
 | モーションが派手で疲れる | [Animations](/references/animations/) | [Visual Details](/references/visual-details/) |
 | リリース前チェックが属人化している | [Accessibility](/references/accessibility/) | [Visual Details](/references/visual-details/) |
 
-## Ten Core Principles（学習時に常に戻る基準）
+## Core Principles（学習時に常に戻る基準）
 
 1. CSS は命令ではなく提案  
 2. 昇格順は `Static -> Intrinsic -> Container -> Media`  
